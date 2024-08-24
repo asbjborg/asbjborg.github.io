@@ -2,6 +2,7 @@
   --font-size: 16px;
   --grid-size: 24px;
   --grid-color: #ede1d1;
+  --container-width: calc(24 * var(--grid-size)); 
 }
 
 body {
@@ -21,9 +22,10 @@ body {
 }
 
 .container {
-  max-width: 600px;
+  width: var(--container-width);
   margin: 0 auto;
   padding: var(--grid-size);
+  box-sizing: border-box;
 }
 
 h1, h2, p, ul, li {
@@ -81,5 +83,6 @@ em {
   :root {
     --grid-size: 20px;
     --font-size: 14px;
+    --container-width: calc(29 * var(--grid-size)); /* 29 * 20px = 580px */
   }
 }
