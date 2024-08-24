@@ -1,0 +1,85 @@
+:root {
+  --font-size: 16px;
+  --grid-size: 24px;
+  --grid-color: #ede1d1;
+}
+
+body {
+  font-family: monospace;
+  font-size: var(--font-size);
+  letter-spacing: 2px;
+  line-height: var(--grid-size);
+  background-color: #f4ecd8;
+  background-image: 
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
+  background-position: 0 0;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: calc(80 * var(--grid-size));
+  margin: 0 auto;
+  padding: var(--grid-size);
+}
+
+h1, h2, p, ul, li {
+  margin: 0;
+  padding: 0;
+  word-wrap: break-word;
+  font-size: var(--font-size);
+  line-height: var(--grid-size);
+}
+
+h1, h2 {
+  font-weight: bold;
+  border-bottom: 1px solid #333;
+  margin-bottom: calc(var(--grid-size) - 1px);
+}
+
+h1 {
+  font-size: calc(var(--font-size) * 1.5);
+  line-height: calc(var(--grid-size) * 1);
+}
+
+h2 {
+  margin-top: var(--grid-size);
+}
+
+p, ul {
+  margin-bottom: var(--grid-size);
+}
+
+ul {
+  padding-left: var(--grid-size);
+}
+
+li {
+  padding-left: 0;
+}
+
+a {
+  color: #1870d4;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+em {
+  font-style: italic;
+  background-color: rgba(237, 225, 209, 0.5);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+@media (max-width: 600px) {
+  :root {
+    --grid-size: 20px;
+    --font-size: 14px;
+  }
+}
