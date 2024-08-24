@@ -21,7 +21,7 @@ body {
 }
 
 .container {
-  max-width: calc(60 * var(--grid-size));
+  max-width: 600px;
   margin: 0 auto;
   padding: var(--grid-size);
 }
@@ -81,11 +81,5 @@ em {
   :root {
     --grid-size: 20px;
     --font-size: 14px;
-  }
-}
-
-@media (min-width: 1200px) {
-  .container {
-    max-width: calc(80 * var(--grid-size));
   }
 }
