@@ -15,7 +15,6 @@ body {
     linear-gradient(90deg, #ede1d1 1px, transparent 1px);
   background-size: var(--grid-size) var(--grid-size);
   background-position: 0 0;
-  background-attachment: fixed;
   color: #333;
   margin: 0;
   padding: 0;
@@ -54,12 +53,21 @@ p, ul, li {
 }
 
 ul {
-  padding-left: var(--grid-size);
-  list-style-position: inside;
+  padding-left: 0;
+  list-style-type: none;
 }
 
 li {
-  padding-left: 0;
+  position: relative;
+  padding-left: var(--grid-size);
+}
+
+li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  width: var(--grid-size);
+  text-align: center;
 }
 
 a {
