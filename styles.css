@@ -29,7 +29,7 @@ body {
 }
 
 h1, h2, p, ul {
-  margin: 0 0 var(--grid-size) 0;
+  margin: 0;
 }
 
 h1 {
@@ -38,31 +38,35 @@ h1 {
   border-bottom: 1px solid #333;
   padding-bottom: calc(var(--grid-size) - 1px);
   text-transform: uppercase;
+  margin-bottom: var(--grid-size);
 }
 
 h2 {
   font-size: calc(1.5 * var(--font-size));
   line-height: var(--line-height);
   border-bottom: 1px solid #333;
-  padding-bottom: calc(var(--grid-size) - 1px);
+  margin-top: var(--grid-size);
+  margin-bottom: var(--grid-size);
 }
 
-p, ul, li {
-  font-size: var(--font-size);
-  line-height: var(--line-height);
+p, ul {
+  margin-bottom: var(--grid-size);
 }
 
 ul {
-  padding-left: 0;
   list-style-type: none;
+  padding-left: 0;
+  margin-bottom: var(--grid-size);
 }
 
-li {
+ul li {
   position: relative;
   padding-left: var(--grid-size);
+  margin-bottom: var(--grid-size);
+  line-height: var(--line-height);
 }
 
-li::before {
+ul li::before {
   content: '•';
   position: absolute;
   left: 0;
