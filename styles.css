@@ -35,7 +35,7 @@ h1, h2, p, ul {
 h1 {
   font-size: calc(2 * var(--font-size));
   line-height: calc(2 * var(--line-height));
-  border-bottom: 1px solid #333;
+  /*border-bottom: 1px solid #333;*/
   padding-bottom: calc(var(--grid-size) - 1px);
   text-transform: uppercase;
   margin-bottom: var(--grid-size);
