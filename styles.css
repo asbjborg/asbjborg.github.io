@@ -1,62 +1,61 @@
 :root {
   --font-size: 16px;
+  --line-height: 24px;
   --grid-size: 24px;
-  --grid-color: #ede1d1;
-  --container-width: calc(24 * var(--grid-size)); 
 }
 
 body {
   font-family: monospace;
   font-size: var(--font-size);
+  line-height: var(--line-height);
   letter-spacing: 2px;
-  line-height: var(--grid-size);
   background-color: #f4ecd8;
-  background-image: 
-    linear-gradient(var(--grid-color) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-image:
+    linear-gradient(#ede1d1 1px, transparent 1px),
+    linear-gradient(90deg, #ede1d1 1px, transparent 1px);
   background-size: var(--grid-size) var(--grid-size);
   background-position: 0 0;
+  background-attachment: fixed;
   color: #333;
   margin: 0;
   padding: 0;
 }
 
 .container {
-  width: var(--container-width);
+  width: calc(24 * var(--grid-size));
+  max-width: 100%;
   margin: 0 auto;
-  padding: var(--grid-size);
+  padding: 0 var(--grid-size);
   box-sizing: border-box;
 }
 
-h1, h2, p, ul, li {
-  margin: 0;
-  padding: 0;
-  word-wrap: break-word;
-  font-size: var(--font-size);
-  line-height: var(--grid-size);
-}
-
-h1, h2 {
-  font-weight: bold;
-  border-bottom: 1px solid #333;
-  margin-bottom: calc(var(--grid-size) - 1px);
+h1, h2, p, ul {
+  margin: 0 0 var(--grid-size) 0;
 }
 
 h1 {
-  font-size: calc(var(--font-size) * 1.5);
-  line-height: calc(var(--grid-size) * 1);
+  font-size: calc(2 * var(--font-size));
+  line-height: calc(2 * var(--line-height));
+  border-bottom: 1px solid #333;
+  padding-bottom: calc(var(--grid-size) - 1px);
+  text-transform: uppercase;
 }
 
 h2 {
-  margin-top: var(--grid-size);
+  font-size: calc(1.5 * var(--font-size));
+  line-height: var(--line-height);
+  border-bottom: 1px solid #333;
+  padding-bottom: calc(var(--grid-size) - 1px);
 }
 
-p, ul {
-  margin-bottom: var(--grid-size);
+p, ul, li {
+  font-size: var(--font-size);
+  line-height: var(--line-height);
 }
 
 ul {
   padding-left: var(--grid-size);
+  list-style-position: inside;
 }
 
 li {
@@ -79,10 +78,14 @@ em {
   border-radius: 2px;
 }
 
+@media (min-width: 601px) {
+  body {
+    background-position: calc(50% - (12 * var(--grid-size)) + (var(--grid-size) / 2)) 0;
+  }
+}
+
 @media (max-width: 600px) {
-  :root {
-    --grid-size: 20px;
-    --font-size: 14px;
-    --container-width: calc(29 * var(--grid-size)); /* 29 * 20px = 580px */
+  .container {
+    width: 100%;
   }
 }
