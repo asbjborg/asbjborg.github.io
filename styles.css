@@ -14,7 +14,7 @@ body {
     linear-gradient(#ede1d1 1px, transparent 1px),
     linear-gradient(90deg, #ede1d1 1px, transparent 1px);
   background-size: var(--grid-size) var(--grid-size);
-  background-position: 0 0;
+  background-position: 0 -1px;
   color: #333;
   margin: 0;
   padding: 0;
@@ -35,19 +35,34 @@ h1, h2, p, ul {
 h1 {
   font-size: calc(2 * var(--font-size));
   line-height: calc(2 * var(--line-height));
-  /*border-bottom: 1px solid #333;*/
-  padding-bottom: calc(var(--grid-size) - 1px);
+  padding-bottom: calc(var(--grid-size) - var(--line-height));
   text-transform: uppercase;
   margin-bottom: var(--grid-size);
 }
 
+
+
 h2 {
   font-size: calc(1.5 * var(--font-size));
   line-height: var(--line-height);
-  border-bottom: 1px solid #333;
   margin-top: var(--grid-size);
   margin-bottom: var(--grid-size);
+  position: relative; /* Add position relative */
 }
+
+/*h2::first-letter {
+  position: absolute; 
+  left: 0;
+  top: 0; 
+  font-size: var(--line-height);
+  line-height: var(--line-height);
+  background-color: #333;
+  color: #f4ecd8;
+  margin-right: calc(var(--grid-size) / 10);
+  box-sizing: border-box;
+  border-left: 3px solid #333;
+  border-right: 2px solid #333;
+}*/
 
 p, ul {
   margin-bottom: var(--grid-size);
@@ -56,7 +71,6 @@ p, ul {
 ul {
   list-style-type: none;
   padding-left: 0;
-  margin-bottom: var(--grid-size);
 }
 
 ul li {
@@ -92,7 +106,7 @@ em {
 
 @media (min-width: 601px) {
   body {
-    background-position: calc(50% - (12 * var(--grid-size)) + (var(--grid-size) / 2)) 0;
+    background-position: calc(50% - (12 * var(--grid-size)) + (var(--grid-size) / 2)) -1px;
   }
 }
 
