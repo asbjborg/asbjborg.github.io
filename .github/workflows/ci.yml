@@ -1,0 +1,57 @@
+name: "CI"
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - ".gitignore"
+      - ".editorconfig"
+      - "README.md"
+      - "LICENSE"
+      - "*.lock"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.3
+          bundler-cache: true
+
+      - name: Build site
+        run: bundle exec jekyll b
+        env:
+          JEKYLL_ENV: "production"
+
+      - name: Test site
+        run: |
+          bundle exec htmlproofer _site \
+            --disable-external \
+            --check-html \
+            --allow_hash_href \
+            --ignore-urls "/^http:\/\/127.0.0.1/,/^http:\/\/0.0.0.0/,/^http:\/\/localhost/" \
+            --ignore-missing-alt
+
+      - name: Check for broken links
+        run: |
+          bundle exec jekyll build
+          bundle exec htmlproofer ./_site --only-4xx --check-favicon --check-html --assume-extension
+
+      - name: Check Jekyll configuration
+        run: bundle exec jekyll doctor
+
+      - name: Lint Markdown files
+        uses: DavidAnson/markdownlint-cli2-action@v13
+        with:
+          globs: |
+            _posts/*.md
+            _tabs/*.md
+            *.md 

@@ -9,6 +9,10 @@ gem "base64"     # Required for Ruby 3.3
 gem "bigdecimal" # Required for Ruby 3.3
 gem "csv"        # Required for Ruby 3.3
 
+group :test do
+  gem "html-proofer", "~> 5.0"
+end
+
 group :jekyll_plugins do
   gem "jekyll-feed"
   gem "jekyll-seo-tag"
