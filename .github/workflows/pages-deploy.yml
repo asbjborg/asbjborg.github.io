@@ -35,7 +35,13 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.3
-          bundler-cache: true
+          bundler-cache: false
+
+      - name: Bundle Install
+        run: |
+          bundle config set --local deployment 'false'
+          bundle config set --local path 'vendor/bundle'
+          bundle install
 
       - name: Build site
         run: bundle exec jekyll b -d "_site${{ steps.pages.outputs.base_path }}"
