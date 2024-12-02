@@ -3,3 +3,12 @@ _site
 .jekyll-cache
 .jekyll-metadata
 vendor
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# macOS system files
+.DS_Store
+~/
+com.asbjborg.obsidian-to-blog-sync.plist
