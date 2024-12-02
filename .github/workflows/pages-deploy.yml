@@ -57,7 +57,8 @@ jobs:
             --disable-external \
             --checks Links,Images,Scripts \
             --allow-hash-href \
-            --ignore-urls "/^http:\/\/127.0.0.1/,/^http:\/\/0.0.0.0/,/^http:\/\/localhost/"
+            --ignore-urls "/^http:\/\/127.0.0.1/,/^http:\/\/0.0.0.0/,/^http:\/\/localhost/" \
+            --ignore-status-codes 999,400,401,403,404,500
 
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3

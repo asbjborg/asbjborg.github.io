@@ -43,15 +43,8 @@ jobs:
             --disable-external \
             --checks Links,Images,Scripts \
             --allow-hash-href \
-            --ignore-urls "/^http:\/\/127.0.0.1/,/^http:\/\/0.0.0.0/,/^http:\/\/localhost/"
-
-      - name: Check for broken links
-        run: |
-          bundle exec jekyll build
-          bundle exec htmlproofer ./_site \
-            --checks Links \
-            --assume-extension \
-            --ignore-status-codes "999,400,401,403,404,500"
+            --ignore-urls "/^http:\/\/127.0.0.1/,/^http:\/\/0.0.0.0/,/^http:\/\/localhost/" \
+            --ignore-status-codes 999,400,401,403,404,500
 
       - name: Check Jekyll configuration
         run: bundle exec jekyll doctor

@@ -297,3 +297,7 @@ plugins:
   - jekyll-paginate
   - jekyll-redirect-from
   - jekyll-archives
+
+# Feed settings
+feed:
+  path: feed.xml  # Explicitly set feed path to avoid conflicts
