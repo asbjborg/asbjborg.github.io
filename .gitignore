@@ -7,3 +7,8 @@ vendor
 __pycache__/
 *.pyc
 .env
+
+# macOS system files
+.DS_Store
+~/
+com.asbjborg.obsidian-to-blog-sync.plist
