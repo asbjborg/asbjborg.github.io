@@ -45,7 +45,7 @@ I began with the myth of the Sirens, drawing parallels to this modern phenomenon
 
 ## The Creative Process
 
-• **Lyrics:** I focused on hypnotic repetition to mirror the spellbinding nature of the Sirens’ song. The recurring line, _“Wash it away, wash it away,”_ creates a cyclical, drowning sensation.
+• **Lyrics:** I focused on hypnotic repetition to mirror the spellbinding nature of the Sirens’ song. The recurring line, _“the sirens sing,”_ creates a cyclical, drowning sensation.
 
 • **Music:** The instrumental layers are dark and atmospheric, with pulsing beats to evoke waves and echoes to mimic the Sirens’ voices.
 
