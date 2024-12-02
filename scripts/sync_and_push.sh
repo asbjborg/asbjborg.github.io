@@ -23,6 +23,6 @@ if [[ -n $(git status -s) ]]; then
     # Push to main
     git push origin main
 
-    # Show notification
-    osascript -e "display notification \"$changed_files files synced to blog\" with title \"Blog Sync\" sound name \"Glass\""
+    # Show notification using terminal-notifier
+    terminal-notifier -title "Blog Sync" -message "$changed_files files synced to blog" -sound Glass -open "file://$(pwd)/_posts"
 fi 
