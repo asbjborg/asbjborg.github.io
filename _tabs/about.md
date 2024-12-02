@@ -20,6 +20,7 @@ I work with various technologies and love to explore new ways to solve problems 
 ## Connect With Me
 
 You can find me on:
+
 - [GitHub](https://github.com/asbjborg)
 - [Twitter/X](https://x.com/asbjborg)
 - [SoundCloud](https://soundcloud.com/asbjborg)

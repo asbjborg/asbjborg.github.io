@@ -291,9 +291,12 @@ exclude:
 
 # Plugins
 plugins:
-  - jekyll-feed
   - jekyll-seo-tag
   - jekyll-sitemap
   - jekyll-paginate
   - jekyll-redirect-from
   - jekyll-archives
+
+# Feed settings
+feed:
+  disable: true  # Disable Jekyll Feed to avoid conflicts with Chirpy's feed
