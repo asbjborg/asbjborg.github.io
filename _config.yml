@@ -300,4 +300,4 @@ plugins:
 
 # Feed settings
 feed:
-  path: feed.xml  # Explicitly set feed path to avoid conflicts
+  disable: true  # Disable Jekyll Feed to avoid conflicts with Chirpy's feed
