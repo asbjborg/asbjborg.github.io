@@ -15,3 +15,6 @@ com.asbjborg.obsidian-to-blog-sync.plist
 
 # Cursor workarounds for github
 commit_message.txt
+
+# cursor
+.cursorrules
