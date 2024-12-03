@@ -147,6 +147,10 @@ class ObsidianSync:
 
                 # Process content for media files
                 clean_post.content = self.media_handler.process_content(clean_post.content)
+
+                # Ensure content ends with a newline
+                if not clean_post.content.endswith('\n'):
+                    clean_post.content += '\n'
             except Exception as e:
                 logger.error(f"Error processing frontmatter for {path}: {e}")
                 raise
@@ -159,10 +163,14 @@ class ObsidianSync:
                     if clean_post.content.strip() != existing_post.content.strip():
                         with open(target_path, 'wb') as f:
                             frontmatter.dump(clean_post, f)
+                            # Ensure file ends with newline
+                            f.write(b'\n')
                         logger.info(f"Updated: {jekyll_filename}")
                 else:
                     with open(target_path, 'wb') as f:
                         frontmatter.dump(clean_post, f)
+                        # Ensure file ends with newline
+                        f.write(b'\n')
                     logger.info(f"Published: {jekyll_filename}")
             except Exception as e:
                 logger.error(f"Error writing to {target_path}: {e}")
