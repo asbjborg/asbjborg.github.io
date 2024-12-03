@@ -49,7 +49,9 @@ class MediaHandler:
         try:
             # Generate a unique filename based on content hash
             file_hash = hashlib.md5(file_path.read_bytes()).hexdigest()[:8]
-            new_filename = f"{file_path.stem}-{file_hash}{file_path.suffix.lower()}"
+            # Replace spaces with hyphens in the filename
+            clean_stem = file_path.stem.replace(' ', '-')
+            new_filename = f"{clean_stem}-{file_hash}{file_path.suffix.lower()}"
             target_path = self.assets_path / new_filename
             
             # Process images, copy other files directly
