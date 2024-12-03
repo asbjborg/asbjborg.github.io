@@ -3,8 +3,6 @@ time: 1175
 title: Sinking Mankind - New track published on Soundcloud
 ---
 
-# Sinking Mankind - New track published on Soundcloud
-
 *Exploring modern parallels to ancient myths.*
 
 [Listen to "Sinking Mankind" on Soundcloud](https://soundcloud.com/asbjborg/sinking-mankind)
@@ -15,7 +13,7 @@ I’ve always been fascinated by the timelessness of myths—how their core trut
 
 ## Inspiration from the Myth
 
-In Homer’s _Odyssey_, the Sirens are both irresistible and fatal. They represent temptation, but also the vulnerability of those who hear their song. For me, this myth echoes what I see today: a world where human connection has become fragmented, and people turn to digital spaces to fill that void. The Sirens of our age may not sit on rocky shores, but they exist in glowing screens, with AI-crafted words and images that draw people in.
+In Homer’s *Odyssey*, the Sirens are both irresistible and fatal. They represent temptation, but also the vulnerability of those who hear their song. For me, this myth echoes what I see today: a world where human connection has become fragmented, and people turn to digital spaces to fill that void. The Sirens of our age may not sit on rocky shores, but they exist in glowing screens, with AI-crafted words and images that draw people in.
 
 I don’t believe the Sirens—or their modern counterparts—are inherently evil. Instead, they represent a system of supply and demand. Just as sailors once risked everything for a chance to hear the Sirens’ song, today’s consumers are often willing to sacrifice their time, money, and emotional well-being for fleeting moments of connection or validation.
 
@@ -45,7 +43,7 @@ I began with the myth of the Sirens, drawing parallels to this modern phenomenon
 
 ## The Creative Process
 
-• **Lyrics:** I focused on hypnotic repetition to mirror the spellbinding nature of the Sirens’ song. The recurring line, _“the sirens sing,”_ creates a cyclical, drowning sensation.
+• **Lyrics:** I focused on hypnotic repetition to mirror the spellbinding nature of the Sirens’ song. The recurring line, *“the sirens sing,”* creates a cyclical, drowning sensation.
 
 • **Music:** The instrumental layers are dark and atmospheric, with pulsing beats to evoke waves and echoes to mimic the Sirens’ voices.
 
@@ -63,4 +61,4 @@ This song has opened a door for me to explore other myths through a modern lens.
 
 ## Final Thought
 
-_“Sinking Mankind”_ is a story of our time, written in the language of the past. It’s not about blame—it’s about understanding the currents that shape us and the songs we can’t help but follow.
+*“Sinking Mankind”* is a story of our time, written in the language of the past. It’s not about blame—it’s about understanding the currents that shape us and the songs we can’t help but follow.
