@@ -6,6 +6,10 @@
 - type: twitter
   icon: "fa-brands fa-x-twitter"
 
+- type: soundcloud
+  icon: "fab fa-soundcloud"
+  url: "https://soundcloud.com/asbjborg"
+
 - type: email
   icon: "fas fa-envelope"
   noblank: true # open link in current tab
