@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 
 import os
-import shutil
 import sys
 import time
 import argparse
 import frontmatter
 import logging
 from pathlib import Path
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
 from dotenv import load_dotenv
+from media_handler import MediaHandler
 
 # Set up logging
 logging.basicConfig(
@@ -26,25 +24,37 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
-class ObsidianHandler(FileSystemEventHandler):
+class ObsidianSync:
     def __init__(self, blog_path: Path):
         try:
             self.vault_path = Path(os.getenv('VAULT_PATH')).expanduser().resolve()
             self.atomics_path = self.vault_path / os.getenv('VAULT_ATOMICS_PATH', 'atomics')
+            self.attachments_path = self.vault_path / os.getenv('VAULT_ATTACHMENTS_PATH', 'attachments')
             self.blog_path = blog_path
             self.posts_path = blog_path / '_posts'
+            self.assets_path = blog_path / os.getenv('BLOG_ASSETS_PATH', 'assets/img/posts')
+            
+            # Create necessary directories
             self.posts_path.mkdir(exist_ok=True)
+            self.assets_path.mkdir(parents=True, exist_ok=True)
+
+            # Initialize media handler
+            self.media_handler = MediaHandler(self.attachments_path, self.assets_path)
 
             if not self.vault_path.exists():
                 raise ValueError(f"Vault path does not exist: {self.vault_path}")
             if not self.atomics_path.exists():
                 raise ValueError(f"Atomics path does not exist: {self.atomics_path}")
+            if not self.attachments_path.exists():
+                raise ValueError(f"Attachments path does not exist: {self.attachments_path}")
             
             logger.info(f"Initialized with vault: {self.vault_path}")
-            logger.info(f"Watching atomics path: {self.atomics_path}")
+            logger.info(f"Using atomics path: {self.atomics_path}")
+            logger.info(f"Using attachments path: {self.attachments_path}")
             logger.info(f"Publishing to: {self.posts_path}")
+            logger.info(f"Media assets path: {self.assets_path}")
         except Exception as e:
-            logger.error(f"Failed to initialize ObsidianHandler: {str(e)}")
+            logger.error(f"Failed to initialize ObsidianSync: {str(e)}")
             raise
 
     def _should_publish(self, path: Path) -> bool:
@@ -119,6 +129,14 @@ class ObsidianHandler(FileSystemEventHandler):
                 if post.get('time'):
                     clean_post['time'] = post.get('time')
                 
+                # Handle featured image if specified
+                if post.get('featured_image'):
+                    image_path = self.attachments_path / post['featured_image']
+                    if image_path.exists():
+                        new_path = self.media_handler.handle_media_file(image_path)
+                        if new_path:
+                            clean_post['featured_image'] = new_path
+                
                 # Handle tags - keep all except 'atomic'
                 if post.get('tags'):
                     tags = post['tags']
@@ -126,6 +144,13 @@ class ObsidianHandler(FileSystemEventHandler):
                         filtered_tags = [tag for tag in tags if tag != 'atomic']
                         if filtered_tags:
                             clean_post['tags'] = filtered_tags
+
+                # Process content for media files
+                clean_post.content = self.media_handler.process_content(clean_post.content)
+
+                # Ensure content ends with a newline
+                if not clean_post.content.endswith('\n'):
+                    clean_post.content += '\n'
             except Exception as e:
                 logger.error(f"Error processing frontmatter for {path}: {e}")
                 raise
@@ -138,10 +163,14 @@ class ObsidianHandler(FileSystemEventHandler):
                     if clean_post.content.strip() != existing_post.content.strip():
                         with open(target_path, 'wb') as f:
                             frontmatter.dump(clean_post, f)
+                            # Ensure file ends with newline
+                            f.write(b'\n')
                         logger.info(f"Updated: {jekyll_filename}")
                 else:
                     with open(target_path, 'wb') as f:
                         frontmatter.dump(clean_post, f)
+                        # Ensure file ends with newline
+                        f.write(b'\n')
                     logger.info(f"Published: {jekyll_filename}")
             except Exception as e:
                 logger.error(f"Error writing to {target_path}: {e}")
@@ -151,7 +180,7 @@ class ObsidianHandler(FileSystemEventHandler):
             logger.error(f"Error processing {path}: {e}")
 
     def sync_all(self):
-        """Initial sync of all markdown files."""
+        """Sync all markdown files."""
         logger.info(f"Scanning directory: {self.atomics_path}")
         try:
             for path in self.atomics_path.rglob('*.md'):
@@ -161,20 +190,8 @@ class ObsidianHandler(FileSystemEventHandler):
             logger.error(f"Error during sync_all: {e}")
             raise
 
-    def on_modified(self, event):
-        if event.is_directory:
-            return
-        path = Path(event.src_path)
-        if self.atomics_path in path.parents:
-            logger.info(f"File modified: {path}")
-            self._sync_file(path)
-
-    def on_created(self, event):
-        self.on_modified(event)
-
 def main():
     parser = argparse.ArgumentParser(description='Sync Obsidian vault with Jekyll blog posts')
-    parser.add_argument('--watch', '-w', action='store_true', help='Watch for changes after initial sync')
     parser.add_argument('--debug', '-d', action='store_true', help='Enable debug logging')
     args = parser.parse_args()
 
@@ -184,39 +201,19 @@ def main():
     blog_path = Path(__file__).parent.parent.resolve()
     
     try:
-        handler = ObsidianHandler(blog_path)
+        sync = ObsidianSync(blog_path)
     except ValueError as e:
         logger.error(f"Error: {e}")
         sys.exit(1)
     
-    # Initial sync
-    logger.info("Performing initial sync...")
+    # Perform sync
+    logger.info("Starting sync...")
     try:
-        handler.sync_all()
+        sync.sync_all()
+        logger.info("Sync completed successfully")
     except Exception as e:
-        logger.error(f"Initial sync failed: {e}")
+        logger.error(f"Sync failed: {e}")
         sys.exit(1)
-    
-    if args.watch:
-        # Watch for changes
-        try:
-            observer = Observer()
-            observer.schedule(handler, str(handler.atomics_path), recursive=True)
-            observer.start()
-
-            logger.info(f"Watching for changes in {handler.atomics_path}...")
-            try:
-                while True:
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                observer.stop()
-                logger.info("\nStopping file watcher...")
-            observer.join()
-        except Exception as e:
-            logger.error(f"Error in file watcher: {e}")
-            sys.exit(1)
-    else:
-        logger.info("One-time sync complete. Use --watch to monitor for changes.")
 
 if __name__ == '__main__':
     main()
