@@ -63,4 +63,4 @@ This experience showed me the potential of AI-assisted development - not just fo
 
 What started as "fix this annoying email link" became a journey through modern development practices, security considerations, and the collaborative nature of coding. It's these unexpected learning moments that make development such an engaging field.
 
-_Have you had similar experiences where a simple fix led to deeper insights? How do you balance security with user experience in your projects?_ 
+_Have you had similar experiences where a simple fix led to deeper insights? How do you balance security with user experience in your projects?_
