@@ -1,43 +1,53 @@
-# Chirpy Starter
+# asbjborg.github.io
 
-[![Gem Version](https://img.shields.io/gem/v/jekyll-theme-chirpy)][gem]&nbsp;
-[![GitHub license](https://img.shields.io/github/license/cotes2020/chirpy-starter.svg?color=blue)][mit]
+My personal blog, built with Jekyll and enhanced with Obsidian sync functionality. The blog automatically syncs content from my Obsidian vault, handling both posts and media files.
 
-When installing the [**Chirpy**][chirpy] theme through [RubyGems.org][gem], Jekyll can only read files in the folders
-`_data`, `_layouts`, `_includes`, `_sass` and `assets`, as well as a small part of options of the `_config.yml` file
-from the theme's gem. If you have ever installed this theme gem, you can use the command
-`bundle info --path jekyll-theme-chirpy` to locate these files.
+## Features
 
-The Jekyll team claims that this is to leave the ball in the user’s court, but this also results in users not being
-able to enjoy the out-of-the-box experience when using feature-rich themes.
+### Obsidian Integration
 
-To fully use all the features of **Chirpy**, you need to copy the other critical files from the theme's gem to your
-Jekyll site. The following is a list of targets:
+The blog includes automatic syncing from Obsidian vault to Jekyll posts with the following features:
+
+- **Automatic Post Sync**: Posts marked with `published: true` in Obsidian are automatically synced
+- **Media Handling**:
+  - Supports Obsidian image syntax (`![[image.png]]`)
+  - Automatically processes and optimizes images
+  - Handles featured images in frontmatter
+- **File Organization**:
+  - Maintains proper Jekyll post naming convention
+  - Organizes media files in assets directory
+  - Handles file conflicts with content hashing
+- **Quality Control**:
+  - Markdown linting
+  - Image optimization
+  - Proper newline handling
+
+### Configuration
+
+The sync functionality requires the following environment variables in `.env`:
 
 ```shell
-.
-├── _config.yml
-├── _plugins
-├── _tabs
-└── index.html
+VAULT_PATH=/path/to/obsidian/vault
+VAULT_ATOMICS_PATH=atomics
+VAULT_ATTACHMENTS_PATH=attachments
+BLOG_ASSETS_PATH=assets/img/posts
 ```
 
-To save you time, and also in case you lose some files while copying, we extract those files/configurations of the
-latest version of the **Chirpy** theme and the [CD][CD] workflow to here, so that you can start writing in minutes.
+### Automatic Sync
 
-## Usage
+The blog uses a cron job to automatically sync posts every 5 minutes. The sync script:
 
-Check out the [theme's docs](https://github.com/cotes2020/jekyll-theme-chirpy/wiki).
+1. Checks for new/updated posts in Obsidian
+2. Processes any media files
+3. Updates the Jekyll blog
+4. Commits and pushes changes
 
-## Contributing
+## Acknowledgments
 
-This repository is automatically updated with new releases from the theme repository. If you encounter any issues or want to contribute to its improvement, please visit the [theme repository][chirpy] to provide feedback.
+This blog is powered by [Jekyll](https://jekyllrb.com/) and uses the beautiful [Chirpy theme](https://github.com/cotes2020/jekyll-theme-chirpy/). Big thanks to both projects for making this blog possible! ❤️
 
 ## License
 
 This work is published under [MIT][mit] License.
 
-[gem]: https://rubygems.org/gems/jekyll-theme-chirpy
-[chirpy]: https://github.com/cotes2020/jekyll-theme-chirpy/
-[CD]: https://en.wikipedia.org/wiki/Continuous_deployment
 [mit]: https://github.com/cotes2020/chirpy-starter/blob/master/LICENSE
