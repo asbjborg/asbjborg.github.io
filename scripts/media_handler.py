@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from PIL import Image
 import hashlib
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -66,18 +67,24 @@ class MediaHandler:
     def process_content(self, content: str) -> str:
         """Process content to handle media files and update paths."""
         try:
-            # Match Obsidian image/media syntax: ![[filename]] or [[filename]]
+            # Match Obsidian image/media syntax with optional path: ![[path/to/filename]] or [[path/to/filename]]
             media_pattern = r'!\[\[(.*?)\]\]|\[\[(.*?)\]\]'
             
             def replace_media(match):
-                filename = match.group(1) or match.group(2)
-                if not filename:
+                filepath = match.group(1) or match.group(2)
+                if not filepath:
                     return match.group(0)
+                
+                # Extract just the filename from the path
+                filename = os.path.basename(filepath)
                 
                 # Check if it's a media file
                 media_path = self.attachments_path / filename
                 if not media_path.exists():
-                    return match.group(0)
+                    # Try with the full path
+                    media_path = self.attachments_path / filepath
+                    if not media_path.exists():
+                        return match.group(0)
                 
                 # Process media file and get new path
                 new_path = self.handle_media_file(media_path)
@@ -87,7 +94,6 @@ class MediaHandler:
                 # Return markdown image syntax
                 return f"![{filename}]({new_path})"
             
-            import re
             return re.sub(media_pattern, replace_media, content)
         except Exception as e:
             logger.error(f"Error processing content for media: {e}")
