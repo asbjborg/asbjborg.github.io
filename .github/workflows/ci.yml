@@ -20,6 +20,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Validate image paths
+        run: python scripts/test_image_paths.py
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:

@@ -3,3 +3,10 @@ fix: update image paths and media handler for Jekyll compatibility
 - Fix image reference format in blog post to avoid spaces
 - Update media_handler to replace spaces with hyphens in filenames
 - Ensure consistent image path formatting for Jekyll build 
+
+test: add image path validation to CI
+
+- Add Python script to validate image paths before build
+- Check for spaces in image paths
+- Verify image files exist
+- Update CI workflow to run validation 
