@@ -50,7 +50,8 @@ The engine is split into modular components (because who doesn't love a good mod
 scripts/sync_engine/
 ├── core/
 │   ├── engine.py    # The brains of the operation
-│   └── types.py     # The vocabulary
+│   ├── types.py     # The vocabulary
+│   └── conflict.py  # The peacekeeper
 └── handlers/
     ├── post.py      # The post whisperer
     └── media.py     # The image wizard
@@ -69,6 +70,30 @@ Here's where it gets interesting. The engine doesn't just push changes one way -
    - Updates content while preserving Obsidian metadata
    - Keeps your links and formatting intact
    - Never messes with your precious Obsidian structure
+
+### Conflict Resolution 🤝
+
+Sometimes both sides change the same file (we've all been there). The engine handles this like a pro mediator:
+
+1. **Smart Detection**
+   ```python
+   # Detect changes using content hashes
+   content_differs = obsidian_hash != jekyll_hash
+   frontmatter_differs = obsidian_fm != jekyll_fm
+   ```
+
+2. **Resolution Strategy**
+   - If only frontmatter differs: Keep Obsidian's version (it's your source of truth)
+   - If content differs: Use the most recently modified version
+   - If Jekyll is newer: Only update content in Obsidian, preserve metadata
+   - If Obsidian is newer: Update everything in Jekyll
+
+3. **Helpful Diffs**
+   ```python
+   # When conflicts occur, see what changed
+   diff = engine.get_content_diff(obsidian_file, jekyll_file)
+   print(f"Changes:\n{diff}")
+   ```
 
 ### Media Magic 🪄
 
