@@ -14,8 +14,6 @@ image: /assets/img/posts/Pasted-image-20241203214844-9f4a62ca.png
 
 ## The Interplay of Stillness and Action
 
-![Pasted image 20241203214844.png](/assets/img/posts/Pasted-image-20241203214844-9f4a62ca.png)
-
 In the dance of existence, there is a profound tension between **stillness** and **action**. These two forces, though seemingly opposite, are not in conflict—they are complementary.
 
 • **Stillness** invites us to pause, to observe without judgment, and to find clarity in the present moment. It is the quiet space where insight and intuition arise.
