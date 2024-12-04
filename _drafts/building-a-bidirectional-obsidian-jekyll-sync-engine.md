@@ -1,0 +1,134 @@
+---
+title: "Building a Bidirectional Obsidian-Jekyll Sync Engine (or: How I Learned to Stop Worrying and Love the Sync)"
+tags:
+    - python
+    - obsidian
+    - jekyll
+    - automation
+    - development
+---
+
+You know what they say about syncing? It's all about timing! 🥁
+
+(I'll show myself out... but not before I tell you about this cool sync engine I built!)
+
+## The Problem
+
+Picture this: You're happily writing in Obsidian, your thoughts flowing like a mountain stream, when suddenly you realize you want to share some of these gems with the world. But wait! Your blog runs on Jekyll, and copying files manually is about as fun as explaining to your grandma why her computer needs to sync with the cloud. 
+
+"Why not just write directly in Jekyll?" I hear you ask. Well, my friend, that's like asking why I don't just write my shopping list on individual sticky notes scattered around the house. Obsidian is my second brain, my digital garden, my... okay, I'll stop with the metaphors.
+
+## The Solution
+
+Enter the Obsidian-Jekyll Sync Engine v2 (or as I like to call it, "The Thing That Finally Made My Blog Posts Stop Playing Hide and Seek"). It's a Python-based tool that:
+
+1. Watches your Obsidian vault
+2. Picks up posts marked for publishing
+3. Magically transforms them into Jekyll-compatible posts
+4. Handles all the boring stuff like image processing
+5. And (drumroll please 🥁) even syncs changes back from Jekyll to Obsidian!
+
+## How It Works
+
+### The Core Engine
+
+At its heart, the sync engine is like a very meticulous librarian (but faster and with less shushing). It keeps track of every file's state using a fancy state machine:
+
+```python
+class PostStatus(Enum):
+    PUBLISHED = "published"  # Ready for the world to see
+    DRAFT = "draft"         # Still cooking
+    PRIVATE = "private"     # Shh, it's a secret
+    NONE = None            # Just a regular note
+```
+
+### The Smart Parts
+
+The engine is split into modular components (because who doesn't love a good modular design?):
+
+```
+scripts/sync_engine/
+├── core/
+│   ├── engine.py    # The brains of the operation
+│   └── types.py     # The vocabulary
+└── handlers/
+    └── post.py      # The post whisperer
+```
+
+### Bidirectional Sync
+
+Here's where it gets interesting. The engine doesn't just push changes one way - it's like a digital diplomat, negotiating changes between Obsidian and Jekyll:
+
+1. **Obsidian → Jekyll**:
+   - Converts your Obsidian wikilinks to proper Jekyll paths
+   - Handles frontmatter translation
+   - Processes images (because no one likes broken image links)
+
+2. **Jekyll → Obsidian**:
+   - Updates content while preserving Obsidian metadata
+   - Keeps your links and formatting intact
+   - Never messes with your precious Obsidian structure
+
+## Setting It Up
+
+Want to try it yourself? Here's how:
+
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/asbjborg/asbjborg.github.io.git
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Configure your paths:
+   ```python
+   config = {
+       'vault_path': '~/Documents/Obsidian/MyVault',
+       'blog_path': '~/blog'
+   }
+   ```
+
+4. Let it rip:
+   ```python
+   from sync_engine import SyncEngineV2
+   
+   engine = SyncEngineV2(config)
+   engine.sync()
+   ```
+
+## The Magic Sauce
+
+The real magic happens in the status handling. Want to publish a post? Just add this to your Obsidian note's frontmatter:
+
+```yaml
+---
+title: My Awesome Post
+status: published  # The magic word!
+---
+```
+
+And voilà! Your post is ready for its internet debut. Want to keep it as a draft? Use `status: draft`. Want to keep it private? `status: private` or just leave it out entirely.
+
+## Future Plans
+
+We're not done yet! Coming soon:
+- Smart conflict resolution (because sometimes you edit in both places)
+- Atomic operations (because nobody likes half-synced posts)
+- Media optimization (because your cat pictures deserve the best quality)
+
+## Conclusion
+
+Building this sync engine has been like teaching two very different pets to play nice together. Obsidian and Jekyll might speak different languages, but with the right translator, they can work together beautifully.
+
+Remember: A good sync engine is like a good joke - it's all about the timing! (Sorry, couldn't resist one more dad joke)
+
+## Want to Contribute?
+
+Found a bug? Want to add a feature? Think my dad jokes need work? The repo is open source and welcomes contributions! Just don't try to sync your contributions manually - we've got an engine for that now! 😉
+
+---
+
+*P.S. If you're wondering why I built this instead of using existing solutions, let's just say I have a particular set of skills... and an unhealthy obsession with automation. Plus, who doesn't love a good coding challenge?* 
