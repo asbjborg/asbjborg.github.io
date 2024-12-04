@@ -130,11 +130,11 @@ The media handler is where things get really fancy. It's like having a personal 
 
 1. **Smart Path Resolution**
    ```python
-   # Your Obsidian link
-   ![[my cool image.png]]
+   # Your Obsidian link (now with absolute paths!)
+   ![[atomics/2024/12/03/my cool image.png]]
    
    # Gets magically transformed to
-   ![my cool image](/assets/img/posts/my-cool-image-a1b2c3d4.png)
+   ![my cool image](/assets/img/posts/atomics-2024-12-03-my-cool-image-a1b2c3d4.png)
    ```
 
 2. **Image Optimization**
@@ -142,6 +142,8 @@ The media handler is where things get really fancy. It's like having a personal 
    - Optimizes JPEGs and PNGs for web
    - Converts RGBA to RGB with white background
    - Supports WebP for modern browsers
+   - Preserves directory structure in filenames
+   - Handles absolute vault paths for reliable linking
 
 3. **Asset Management**
    - Tracks used files to avoid duplicates
