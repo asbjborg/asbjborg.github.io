@@ -51,7 +51,8 @@ scripts/sync_engine/
 ├── core/
 │   ├── engine.py    # The brains of the operation
 │   ├── types.py     # The vocabulary
-│   └── conflict.py  # The peacekeeper
+│   ├── conflict.py  # The peacekeeper
+│   └── atomic.py    # The safety net
 └── handlers/
     ├── post.py      # The post whisperer
     └── media.py     # The image wizard
@@ -94,6 +95,34 @@ Sometimes both sides change the same file (we've all been there). The engine han
    diff = engine.get_content_diff(obsidian_file, jekyll_file)
    print(f"Changes:\n{diff}")
    ```
+
+### Atomic Operations 🛡️
+
+Because nobody likes corrupted files or half-synced posts, we use atomic operations with automatic rollback:
+
+1. **Safe File Writes**
+   ```python
+   # Write files safely with automatic backup
+   with atomic.atomic_write(post_path) as f:
+       f.write(content)  # If anything fails, original is restored
+   ```
+
+2. **Operation Tracking**
+   ```python
+   # Every operation is tracked
+   operation = AtomicOperation(
+       operation_type='write',
+       source_path=src,
+       target_path=dst,
+       backup_path=backup
+   )
+   ```
+
+3. **Automatic Rollback**
+   - Creates backups before operations
+   - Restores from backup if anything fails
+   - Cleans up old backups automatically
+   - Tracks operation history for debugging
 
 ### Media Magic 🪄
 
