@@ -46,13 +46,14 @@ class PostStatus(Enum):
 
 The engine is split into modular components (because who doesn't love a good modular design?):
 
-```chart
+```
 scripts/sync_engine/
 ├── core/
 │   ├── engine.py    # The brains of the operation
 │   └── types.py     # The vocabulary
 └── handlers/
-    └── post.py      # The post whisperer
+    ├── post.py      # The post whisperer
+    └── media.py     # The image wizard
 ```
 
 ### Bidirectional Sync
@@ -68,6 +69,35 @@ Here's where it gets interesting. The engine doesn't just push changes one way -
    - Updates content while preserving Obsidian metadata
    - Keeps your links and formatting intact
    - Never messes with your precious Obsidian structure
+
+### Media Magic 🪄
+
+The media handler is where things get really fancy. It's like having a personal assistant for your images and attachments:
+
+1. **Smart Path Resolution**
+   ```python
+   # Your Obsidian link
+   ![[my cool image.png]]
+   
+   # Gets magically transformed to
+   ![my cool image](/assets/img/posts/my-cool-image-a1b2c3d4.png)
+   ```
+
+2. **Image Optimization**
+   - Automatically resizes large images (max 1200px width)
+   - Optimizes JPEGs and PNGs for web
+   - Converts RGBA to RGB with white background
+   - Supports WebP for modern browsers
+
+3. **Asset Management**
+   - Tracks used files to avoid duplicates
+   - Cleans up unused assets automatically
+   - Maintains a mapping between original and processed files
+
+4. **Bidirectional Media Sync**
+   - If you edit an image in Jekyll, it syncs back to Obsidian
+   - Preserves original filenames in Obsidian
+   - Uses content hashes for reliable tracking
 
 ## Setting It Up
 
@@ -111,7 +141,10 @@ The real magic happens in the status handling. Want to publish a post? Just add 
 ---
 title: My Awesome Post
 status: published  # The magic word!
+image: ![[my-featured-image.jpg]]  # Will be processed automatically
 ---
+
+Here's a cool image: ![[another-image.png]]
 ```
 
-And voilà! Your post is ready for its internet debut. Want to keep it as a draft? Use `status: draft`. Want to keep it private? `status: private` or just leave it out entirely.
+And voilà! Your post is ready for its internet debut, complete with optimized images. Want to keep it as a draft? Use `status: draft`. Want to keep it private? `status: private` or just leave it out entirely.
