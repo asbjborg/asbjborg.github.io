@@ -21,9 +21,9 @@ I don’t believe the Sirens—or their modern counterparts—are inherently evi
 
 The spark for this song came from the intense discourse on platforms like X about OnlyFans and porn addiction. On one hand, we see people (mostly women) celebrated or criticized for leveraging their appearance and creativity to generate immense wealth. On the other hand, there’s the narrative of insecure, lonely men sinking deeper into obsession and financial ruin.
 
-A fascinating evolution of this dynamic is emerging in places like Bali: "IRL prospecting." In a digital marketplace saturated with 5 million creators, some have discovered a new strategy—bringing the Sirens' song into physical spaces. They become regulars at local coffee shops, gyms, and saunas, crafting an approachable "girl next door" presence. Their digital persona bleeds into reality, creating an illusion of accessibility that's more powerful than purely online content.
+A fascinating evolution of this dynamic, recently observed by [@levelsio](https://x.com/levelsio/status/1863594574360318456), is emerging in places like Bali: "IRL prospecting." In a digital marketplace saturated with 5 million creators, some have discovered a new strategy—bringing the Sirens' song into physical spaces. They become regulars at local coffee shops, gyms, and saunas, crafting an approachable "girl next door" presence. Their digital persona bleeds into reality, creating an illusion of accessibility that's more powerful than purely online content.
 
-This isn't just marketing; it's the Sirens' song adapting to a new age. When digital shores become too crowded, these modern Sirens find new rocks to sing from. The strategy is devastatingly effective: in an area of 100,000 potential subscribers, converting just 0.1% at $50 per month creates significant revenue. Then, like digital nomads, they move to the next location, leaving behind a trail of subscriptions and unfulfilled promises of connection.
+This isn't just marketing; it's the Sirens' song adapting to a new age. When digital shores become too crowded, these modern Sirens find new rocks to sing from. The strategy is devastatingly effective: in an area of 100,000 potential subscribers, converting just 0.1% at $50 per month creates significant revenue. Then, like digital nomads, they move to the next location, leaving behind a trail of subscriptions and unfulfilled promises of connection.[^1]
 
 Personally, I see both sides.
 
@@ -65,4 +65,8 @@ This song has opened a door for me to explore other myths through a modern lens.
 
 ## Final Thought
 
-*“Sinking Mankind”* is a story of our time, written in the language of the past. It’s not about blame—it’s about understanding the currents that shape us and the songs we can’t help but follow.
+*"Sinking Mankind"* is a story of our time, written in the language of the past. It's not about blame—it's about understanding the currents that shape us and the songs we can't help but follow.
+
+---
+
+[^1]: **Editor's Note December 4th 2024:** This piece was updated to include an observation about "IRL prospecting" by [@levelsio](https://x.com/levelsio/status/1863594574360318456), which provides a striking example of how the Sirens' song continues to evolve in our digital age. The phenomenon of digital creators strategically establishing physical presence in locations like Bali further illustrates the blending of virtual and real-world temptation discussed in this piece.
