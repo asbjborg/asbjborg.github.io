@@ -16,15 +16,15 @@ logger = logging.getLogger(__name__)
 class MediaHandler:
     """Handles media file processing and synchronization"""
     
-    def __init__(self, attachments_path: Path, assets_path: Path):
+    def __init__(self, vault_root: Path, assets_path: Path):
         """
         Initialize MediaHandler
         
         Args:
-            attachments_path: Path to Obsidian attachments
+            vault_root: Root path of Obsidian vault
             assets_path: Path to Jekyll assets
         """
-        self.attachments_path = attachments_path
+        self.vault_root = vault_root
         self.assets_path = assets_path
         self.assets_path.mkdir(parents=True, exist_ok=True)
         
@@ -93,8 +93,8 @@ class MediaHandler:
         """
         references = set()
         
-        # Match Obsidian image/media syntax
-        # ![[image.png]] or [[file.pdf]] or ![[path/to/image.png]]
+        # Match Obsidian image/media syntax with absolute paths
+        # ![[atomics/2024/12/03/image.png]] or [[atomics/path/to/file.pdf]]
         media_pattern = r'!\[\[(.*?)\]\]|\[\[(.*?)\]\]'
         
         for match in re.finditer(media_pattern, content):
@@ -108,31 +108,33 @@ class MediaHandler:
         """
         Resolve media reference to actual file path
         
-        Args:
-            reference: Media reference from content
-            
-        Returns:
-            Resolved Path or None if not found
+        Handles:
+        - Absolute vault paths: [[atomics/2024/12/03/image.png]]
+        - Relative paths: [[image.png]]
+        - Sanitized paths: [[my-image.png]]
         """
-        # Try direct path
-        direct_path = self.attachments_path / reference
-        if direct_path.exists():
-            return direct_path
-        
-        # Try just filename
-        filename = Path(reference).name
-        filename_path = self.attachments_path / filename
-        if filename_path.exists():
-            return filename_path
-        
-        # Try normalized path
-        normalized = reference.replace(' ', '-').lower()
-        normalized_path = self.attachments_path / normalized
-        if normalized_path.exists():
-            return normalized_path
-        
-        logger.warning(f"Could not resolve media reference: {reference}")
-        return None
+        try:
+            # Try absolute vault path
+            abs_path = self.vault_root / reference
+            if abs_path.exists():
+                return abs_path
+            
+            # Try just filename in current post's directory
+            filename = Path(reference).name
+            # TODO: Get post's directory when needed
+            
+            # Try normalized path
+            normalized = reference.replace(' ', '-').lower()
+            normalized_path = self.vault_root / normalized
+            if normalized_path.exists():
+                return normalized_path
+            
+            logger.warning(f"Could not resolve media reference: {reference}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error resolving media path: {e}")
+            return None
     
     def get_jekyll_media_path(self, original_path: Path) -> Path:
         """
@@ -144,17 +146,41 @@ class MediaHandler:
         Returns:
             Jekyll-compatible path
         """
-        # Generate content hash for uniqueness
-        file_hash = hashlib.md5(original_path.read_bytes()).hexdigest()[:8]
-        
-        # Clean filename
-        clean_stem = original_path.stem.lower().replace(' ', '-')
-        clean_stem = ''.join(c for c in clean_stem if c.isalnum() or c in '-_')
-        
-        # Create new filename with hash
-        new_filename = f"{clean_stem}-{file_hash}{original_path.suffix.lower()}"
-        
-        return self.assets_path / new_filename
+        try:
+            # Generate content hash for uniqueness
+            file_hash = hashlib.md5(original_path.read_bytes()).hexdigest()[:8]
+            
+            # Get relative path from vault root
+            rel_path = original_path.relative_to(self.vault_root)
+            
+            # Clean filename parts
+            clean_parts = []
+            for part in rel_path.parts:
+                # Skip common parent directories
+                if part in {'atomics', 'attachments'}:
+                    continue
+                # Clean part name
+                clean_part = part.lower().replace(' ', '-')
+                clean_part = ''.join(c for c in clean_part if c.isalnum() or c in '-_.')
+                clean_parts.append(clean_part)
+            
+            # Combine parts with hash
+            stem = '-'.join(clean_parts[:-1]) if len(clean_parts) > 1 else ''
+            name = clean_parts[-1]
+            if stem:
+                new_name = f"{stem}-{name}"
+            else:
+                new_name = name
+            
+            # Add hash before extension
+            base, ext = os.path.splitext(new_name)
+            new_filename = f"{base}-{file_hash}{ext}"
+            
+            return self.assets_path / new_filename
+            
+        except Exception as e:
+            logger.error(f"Error generating Jekyll path: {e}")
+            raise
     
     def process_media_file(self, file_path: Path) -> Optional[str]:
         """
