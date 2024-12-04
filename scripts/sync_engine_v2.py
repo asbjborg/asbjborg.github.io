@@ -22,12 +22,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+class PostStatus(Enum):
+    """Post status states according to sync strategy"""
+    PUBLISHED = "published"
+    DRAFT = "draft"
+    PRIVATE = "private"
+    NONE = None
+
 class SyncOperation(Enum):
-    """Enum for different sync operations"""
+    """Sync operations"""
     CREATE = auto()
     UPDATE = auto()
     DELETE = auto()
     SKIP = auto()
+
+class SyncDirection(Enum):
+    """Direction of sync for conflict resolution"""
+    OBSIDIAN_TO_JEKYLL = auto()
+    JEKYLL_TO_OBSIDIAN = auto()
+    NONE = auto()
 
 @dataclass
 class SyncState:
@@ -37,26 +50,15 @@ class SyncState:
     target_path: Optional[Path] = None
     error: Optional[str] = None
     last_modified: Optional[float] = None
+    status: PostStatus = PostStatus.NONE
+    sync_direction: SyncDirection = SyncDirection.NONE
     checksum: Optional[str] = None
 
 class SyncEngineV2:
     """V2 of the sync engine with improved architecture and features"""
     
     def __init__(self, config: Dict):
-        """
-        Initialize the sync engine with configuration
-        
-        Args:
-            config: Dictionary containing configuration parameters
-                Required keys:
-                - vault_path: Path to Obsidian vault
-                - blog_path: Path to Jekyll blog
-                Optional keys:
-                - vault_atomics_path: Path to atomics folder (default: 'atomics')
-                - vault_attachments_path: Path to attachments (default: 'attachments')
-                - blog_posts_path: Path to posts folder (default: '_posts')
-                - blog_assets_path: Path to assets folder (default: 'assets/img/posts')
-        """
+        """Initialize with configuration"""
         try:
             # Core paths
             self.vault_path = Path(config['vault_path']).expanduser().resolve()
@@ -84,7 +86,162 @@ class SyncEngineV2:
         except Exception as e:
             logger.error(f"Failed to initialize SyncEngineV2: {str(e)}")
             raise
-    
+
+    def _get_post_status(self, post: frontmatter.Post) -> PostStatus:
+        """
+        Get post status according to sync strategy
+        
+        Status rules:
+        - "published": Sync to Jekyll
+        - "draft": Keep in Jekyll for revision
+        - "private" or None: Remove from Jekyll
+        """
+        status = post.get('status', None)
+        if status == "published":
+            return PostStatus.PUBLISHED
+        elif status == "draft":
+            return PostStatus.DRAFT
+        elif status == "private":
+            return PostStatus.PRIVATE
+        return PostStatus.NONE
+
+    def _should_keep_in_jekyll(self, status: PostStatus) -> bool:
+        """
+        Determine if post should be kept in Jekyll
+        
+        Keep if:
+        - Published (active post)
+        - Draft (working on revision)
+        Remove if:
+        - Private (explicitly private)
+        - None (not a blog post)
+        """
+        return status in (PostStatus.PUBLISHED, PostStatus.DRAFT)
+
+    def _compute_file_state(self, source_path: Path) -> SyncState:
+        """Compute sync state for a file"""
+        try:
+            # Basic file checks
+            if not source_path.exists():
+                return SyncState(
+                    operation=SyncOperation.SKIP,
+                    source_path=source_path,
+                    error="Source file does not exist"
+                )
+            
+            # Get file metadata
+            last_modified = source_path.stat().st_mtime
+            
+            # Load post and get status
+            post = frontmatter.load(str(source_path))
+            status = self._get_post_status(post)
+            
+            # Generate target path
+            target_path = self._get_target_path(source_path)
+            
+            # Determine operation based on status and existence
+            if not self._should_keep_in_jekyll(status):
+                # Remove from Jekyll if exists
+                operation = SyncOperation.DELETE if target_path.exists() else SyncOperation.SKIP
+            else:
+                # Create or update based on existence and timestamps
+                if not target_path.exists():
+                    operation = SyncOperation.CREATE
+                else:
+                    # Compare modification times
+                    target_modified = target_path.stat().st_mtime
+                    if last_modified > target_modified:
+                        operation = SyncOperation.UPDATE
+                        sync_direction = SyncDirection.OBSIDIAN_TO_JEKYLL
+                    elif target_modified > last_modified:
+                        operation = SyncOperation.UPDATE
+                        sync_direction = SyncDirection.JEKYLL_TO_OBSIDIAN
+                    else:
+                        operation = SyncOperation.SKIP
+                        sync_direction = SyncDirection.NONE
+            
+            return SyncState(
+                operation=operation,
+                source_path=source_path,
+                target_path=target_path,
+                last_modified=last_modified,
+                status=status,
+                sync_direction=sync_direction
+            )
+            
+        except Exception as e:
+            return SyncState(
+                operation=SyncOperation.SKIP,
+                source_path=source_path,
+                error=str(e)
+            )
+
+    def _sync_file(self, source_path: Path, state: SyncState):
+        """Sync a single file"""
+        try:
+            # Load source post
+            post = frontmatter.load(str(source_path))
+            
+            if state.operation == SyncOperation.DELETE:
+                if state.target_path and state.target_path.exists():
+                    state.target_path.unlink()
+                    logger.info(f"Deleted: {state.target_path}")
+                return
+            
+            if state.sync_direction == SyncDirection.JEKYLL_TO_OBSIDIAN:
+                # Update only content in Obsidian, preserve frontmatter
+                if state.target_path:
+                    jekyll_post = frontmatter.load(str(state.target_path))
+                    post.content = jekyll_post.content
+                    with open(source_path, 'wb') as f:
+                        frontmatter.dump(post, f)
+                        f.write(b'\n')
+                    logger.info(f"Updated Obsidian: {source_path}")
+            else:
+                # Process for Jekyll
+                processed_post = self._process_post(post)
+                if state.target_path:
+                    with open(state.target_path, 'wb') as f:
+                        frontmatter.dump(processed_post, f)
+                        f.write(b'\n')
+                    logger.info(f"{'Created' if state.operation == SyncOperation.CREATE else 'Updated'} Jekyll: {state.target_path}")
+            
+        except Exception as e:
+            state.error = str(e)
+            logger.error(f"Error processing {source_path}: {e}")
+
+    def _process_post(self, post: frontmatter.Post) -> frontmatter.Post:
+        """Process a post for Jekyll"""
+        # Create new post with clean frontmatter
+        clean_post = frontmatter.Post(content=post.content)
+        
+        # Required Jekyll fields
+        clean_post['title'] = post.get('title', post.get('name', 'Untitled'))
+        
+        # Handle time field
+        if post.get('time'):
+            # Convert HH:MM:SS to seconds since midnight
+            try:
+                time_str = post['time']
+                h, m, s = map(int, time_str.split(':'))
+                clean_post['time'] = h * 3600 + m * 60 + s
+            except:
+                logger.warning(f"Could not parse time: {post.get('time')}")
+        
+        # Process tags - filter out internal tags
+        if post.get('tags'):
+            tags = post['tags']
+            if isinstance(tags, list):
+                filtered_tags = [tag for tag in tags if tag not in ['atomic', 'internal']]
+                if filtered_tags:
+                    clean_post['tags'] = filtered_tags
+        
+        # Ensure content ends with newline
+        if not clean_post.content.endswith('\n'):
+            clean_post.content += '\n'
+        
+        return clean_post
+
     def _validate_paths(self):
         """Validate all required paths exist"""
         if not self.vault_path.exists():
@@ -98,56 +255,6 @@ class SyncEngineV2:
         """Create necessary output directories"""
         self.posts_path.mkdir(exist_ok=True)
         self.assets_path.mkdir(parents=True, exist_ok=True)
-    
-    def _compute_file_state(self, source_path: Path) -> SyncState:
-        """
-        Compute the sync state for a file
-        
-        Args:
-            source_path: Path to the source file
-            
-        Returns:
-            SyncState object representing the current state
-        """
-        try:
-            # Basic file checks
-            if not source_path.exists():
-                return SyncState(
-                    operation=SyncOperation.SKIP,
-                    source_path=source_path,
-                    error="Source file does not exist"
-                )
-            
-            # Get file metadata
-            last_modified = source_path.stat().st_mtime
-            
-            # Generate target path
-            target_path = self._get_target_path(source_path)
-            
-            # Determine operation
-            if not target_path.exists():
-                operation = SyncOperation.CREATE
-            else:
-                # Compare modification times and content if needed
-                target_modified = target_path.stat().st_mtime
-                if last_modified > target_modified:
-                    operation = SyncOperation.UPDATE
-                else:
-                    operation = SyncOperation.SKIP
-            
-            return SyncState(
-                operation=operation,
-                source_path=source_path,
-                target_path=target_path,
-                last_modified=last_modified
-            )
-            
-        except Exception as e:
-            return SyncState(
-                operation=SyncOperation.SKIP,
-                source_path=source_path,
-                error=str(e)
-            )
     
     def _get_target_path(self, source_path: Path) -> Path:
         """
@@ -236,69 +343,3 @@ class SyncEngineV2:
         except Exception as e:
             logger.error(f"Error during sync: {e}")
             raise
-    
-    def _sync_file(self, source_path: Path, state: SyncState):
-        """
-        Sync a single file
-        
-        Args:
-            source_path: Path to the source file
-            state: Current sync state for the file
-        """
-        try:
-            # Load and process the post
-            post = frontmatter.load(str(source_path))
-            
-            # Skip if not marked for publishing
-            if not post.get('published', False):
-                state.operation = SyncOperation.SKIP
-                return
-            
-            # Process the post (will be expanded in future commits)
-            processed_post = self._process_post(post)
-            
-            # Write the processed post
-            if state.target_path:
-                with open(state.target_path, 'wb') as f:
-                    frontmatter.dump(processed_post, f)
-                    f.write(b'\n')  # Ensure file ends with newline
-                
-                logger.info(f"{'Created' if state.operation == SyncOperation.CREATE else 'Updated'}: {state.target_path}")
-            
-        except Exception as e:
-            state.error = str(e)
-            logger.error(f"Error processing {source_path}: {e}")
-    
-    def _process_post(self, post: frontmatter.Post) -> frontmatter.Post:
-        """
-        Process a post's frontmatter and content
-        
-        Args:
-            post: The post to process
-            
-        Returns:
-            Processed post
-        """
-        # Create new post with clean frontmatter
-        clean_post = frontmatter.Post(content=post.content)
-        
-        # Process title
-        clean_post['title'] = post.get('title', post.get('name', 'Untitled'))
-        
-        # Keep original time for update tracking
-        if post.get('time'):
-            clean_post['time'] = post.get('time')
-        
-        # Process tags - filter out internal tags
-        if post.get('tags'):
-            tags = post['tags']
-            if isinstance(tags, list):
-                filtered_tags = [tag for tag in tags if tag not in ['atomic', 'internal']]
-                if filtered_tags:
-                    clean_post['tags'] = filtered_tags
-        
-        # Ensure content ends with newline
-        if not clean_post.content.endswith('\n'):
-            clean_post.content += '\n'
-        
-        return clean_post 
