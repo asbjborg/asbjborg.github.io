@@ -14,7 +14,7 @@ You know what they say about syncing? It's all about timing! 🥁
 
 ## The Problem
 
-Picture this: You're happily writing in Obsidian, your thoughts flowing like a mountain stream, when suddenly you realize you want to share some of these gems with the world. But wait! Your blog runs on Jekyll, and copying files manually is about as fun as explaining to your grandma why her computer needs to sync with the cloud. 
+Picture this: You're happily writing in Obsidian, your thoughts flowing like a mountain stream, when suddenly you realize you want to share some of these gems with the world. But wait! Your blog runs on Jekyll, and copying files manually is about as fun as explaining to your grandma why her computer needs to sync with the cloud.
 
 "Why not just write directly in Jekyll?" I hear you ask. Well, my friend, that's like asking why I don't just write my shopping list on individual sticky notes scattered around the house. Obsidian is my second brain, my digital garden, my... okay, I'll stop with the metaphors.
 
@@ -46,7 +46,7 @@ class PostStatus(Enum):
 
 The engine is split into modular components (because who doesn't love a good modular design?):
 
-```
+```chart
 scripts/sync_engine/
 ├── core/
 │   ├── engine.py    # The brains of the operation
@@ -74,16 +74,19 @@ Here's where it gets interesting. The engine doesn't just push changes one way -
 Want to try it yourself? Here's how:
 
 1. Clone the repo:
+
    ```bash
    git clone https://github.com/asbjborg/asbjborg.github.io.git
    ```
 
 2. Install dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
 
 3. Configure your paths:
+
    ```python
    config = {
        'vault_path': '~/Documents/Obsidian/MyVault',
@@ -92,6 +95,7 @@ Want to try it yourself? Here's how:
    ```
 
 4. Let it rip:
+
    ```python
    from sync_engine import SyncEngineV2
    
@@ -111,24 +115,3 @@ status: published  # The magic word!
 ```
 
 And voilà! Your post is ready for its internet debut. Want to keep it as a draft? Use `status: draft`. Want to keep it private? `status: private` or just leave it out entirely.
-
-## Future Plans
-
-We're not done yet! Coming soon:
-- Smart conflict resolution (because sometimes you edit in both places)
-- Atomic operations (because nobody likes half-synced posts)
-- Media optimization (because your cat pictures deserve the best quality)
-
-## Conclusion
-
-Building this sync engine has been like teaching two very different pets to play nice together. Obsidian and Jekyll might speak different languages, but with the right translator, they can work together beautifully.
-
-Remember: A good sync engine is like a good joke - it's all about the timing! (Sorry, couldn't resist one more dad joke)
-
-## Want to Contribute?
-
-Found a bug? Want to add a feature? Think my dad jokes need work? The repo is open source and welcomes contributions! Just don't try to sync your contributions manually - we've got an engine for that now! 😉
-
----
-
-*P.S. If you're wondering why I built this instead of using existing solutions, let's just say I have a particular set of skills... and an unhealthy obsession with automation. Plus, who doesn't love a good coding challenge?* 
