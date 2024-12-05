@@ -111,25 +111,30 @@ class MediaHandler:
             raise ImageProcessingError(f"Failed to process image: {e}") from e
     
     def get_media_references(self, content: str) -> Set[str]:
-        """
-        Extract all media references from content
-        
-        Args:
-            content: Post content to scan
-            
-        Returns:
-            Set of media references found
-        """
+        """Extract all media references from content"""
         references = set()
         
-        # Match Obsidian image/media syntax with absolute paths
-        # ![[atomics/2024/12/03/image.png]] or [[atomics/path/to/file.pdf]]
-        media_pattern = r'!\[\[(.*?)\]\]|\[\[(.*?)\]\]'
+        # Match Obsidian image syntax only: ![[path/to/image.png]]
+        # Exclude:
+        # - Regular links: [[not an image]]
+        # - Regular markdown: ![alt](image.png)
+        # - Malformed wikilinks: ![[missing bracket, ![[], etc.
+        media_pattern = r'!\[\[([^[\]]+?)\]\]'
         
         for match in re.finditer(media_pattern, content):
-            filepath = match.group(1) or match.group(2)
-            if filepath:
-                references.add(filepath)
+            filepath = match.group(1)
+            if filepath and filepath.strip():  # Skip empty or whitespace-only
+                # Clean and validate path
+                clean_path = filepath.strip()
+                if (
+                    not clean_path.startswith('/')  # No absolute paths
+                    and not clean_path.endswith('/')  # No trailing slashes
+                    and not clean_path.startswith('.')  # No relative paths
+                    and not clean_path.startswith('..')  # No parent paths
+                    and '[' not in clean_path  # No nested brackets
+                    and ']' not in clean_path  # No nested brackets
+                ):
+                    references.add(clean_path)
         
         return references
     

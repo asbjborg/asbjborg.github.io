@@ -40,12 +40,23 @@
   - [x] Unsupported formats
   - Status: ✅ ALL PASSED
 
-#### 3. Media References (⏳ TODO)
+#### 3. Media References (🔄 IN PROGRESS)
 - **Needed Tests**:
-  - [ ] Extract wikilinks from content
-  - [ ] Handle various link formats
-  - [ ] Handle malformed links
+  - [x] Extract wikilinks from content
+  - [x] Handle various link formats
+  - [x] Handle malformed links
   - Lines to cover: 123-134
+  - Status: 3/4 tests passing
+  - Current Issue:
+    ```python
+    # Test failing because regex matches regular markdown images
+    Old: r'!\[\[(.*?)\]\]'  # Too permissive
+    New: r'!\[\[([^[\]]+?)\]\]'  # Only matches valid wikilinks
+    ```
+  - Fix Applied:
+    - Updated regex to exclude regular markdown images
+    - Added better pattern documentation
+    - Improved validation of extracted paths
 
 #### 4. Jekyll Path Generation (⏳ TODO)
 - **Needed Tests**:
