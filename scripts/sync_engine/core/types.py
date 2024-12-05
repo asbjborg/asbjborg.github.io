@@ -1,40 +1,34 @@
-"""
-Core types for the sync engine
-"""
+"""Type definitions for sync engine"""
 
 from enum import Enum, auto
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+from dataclasses import dataclass
 
 class PostStatus(Enum):
-    """Post status states according to sync strategy"""
-    PUBLISHED = "published"
+    """Post status enum"""
     DRAFT = "draft"
+    PUBLISHED = "published"
     PRIVATE = "private"
-    NONE = None
 
 class SyncOperation(Enum):
-    """Sync operations"""
+    """Sync operation enum"""
     CREATE = auto()
     UPDATE = auto()
     DELETE = auto()
-    SKIP = auto()
 
 class SyncDirection(Enum):
-    """Direction of sync for conflict resolution"""
+    """Sync direction enum"""
     OBSIDIAN_TO_JEKYLL = auto()
     JEKYLL_TO_OBSIDIAN = auto()
     NONE = auto()
 
 @dataclass
 class SyncState:
-    """Represents the state of a file in the sync process"""
+    """Represents the state of a sync operation"""
     operation: SyncOperation
     source_path: Path
-    target_path: Optional[Path] = None
-    error: Optional[str] = None
-    last_modified: Optional[float] = None
-    status: PostStatus = PostStatus.NONE
-    sync_direction: SyncDirection = SyncDirection.NONE
-    checksum: Optional[str] = None 
+    target_path: Optional[Path]
+    sync_direction: SyncDirection
+    status: Optional[PostStatus] = None
+    last_modified: Optional[float] = None 
