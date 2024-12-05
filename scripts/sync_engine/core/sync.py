@@ -1,226 +1,211 @@
-"""Core sync operations module"""
+"""Core sync orchestration module"""
 
 import logging
-import frontmatter
+import os
 from pathlib import Path
-from typing import List, Optional
-import re
-import time
+from typing import Dict, List, Optional
+import frontmatter
+from dotenv import load_dotenv
 
-from .types import SyncState, SyncOperation, SyncDirection, PostStatus
+from .atomic import AtomicManager
+from .changes import ChangeDetector
+from .types import SyncState, SyncOperation, PostStatus
 from ..handlers.post import PostHandler
 from ..handlers.media import MediaHandler
 
 logger = logging.getLogger(__name__)
 
-class SyncOperations:
-    """Handles core sync operations"""
+class SyncManager:
+    """Manages the sync process between Obsidian and Jekyll"""
     
-    def __init__(
-        self,
-        vault_path: Path,
-        jekyll_path: Path,
-        posts_path: Path,
-        media_path: Path,
-        jekyll_posts: Path,
-        jekyll_assets: Path
-    ):
-        """Initialize sync operations"""
-        self.vault_path = vault_path
-        self.jekyll_path = jekyll_path
-        self.posts_path = posts_path
-        self.media_path = media_path
-        self.jekyll_posts = jekyll_posts
-        self.jekyll_assets = jekyll_assets
+    DEFAULT_CONFIG = {
+        'jekyll_posts': '_posts',
+        'jekyll_assets': 'assets/img/posts',
+        'atomics_root': 'atomics',
+        'backup_count': 5,
+        'auto_cleanup': True,
+        'max_image_width': 1200,
+        'optimize_images': True
+    }
+    
+    def __init__(self, config: Dict):
+        """
+        Initialize sync manager with configuration
         
-        # Initialize handlers
+        Args:
+            config: Configuration dictionary with required paths and optional settings
+            
+        Required config:
+            - vault_root: Path to Obsidian vault
+            - jekyll_root: Path to Jekyll site
+            
+        Optional config:
+            - jekyll_posts: Jekyll posts directory (default: '_posts')
+            - jekyll_assets: Jekyll assets directory (default: 'assets/img/posts')
+            - atomics_root: Obsidian atomics directory (default: 'atomics')
+            - backup_count: Number of backups to keep (default: 5)
+            - auto_cleanup: Whether to auto-cleanup unused files (default: True)
+        
+        Raises:
+            ValueError: If required config is missing or invalid
+        """
+        # Load .env if exists
+        if Path('.env').exists():
+            load_dotenv()
+            
+        # Check env vars if config not provided
+        if not config.get('vault_root'):
+            config['vault_root'] = os.getenv('VAULT_ROOT')
+        if not config.get('jekyll_root'):
+            config['jekyll_root'] = os.getenv('JEKYLL_ROOT')
+            
+        # Validate required config
+        if not config.get('vault_root') or not config.get('jekyll_root'):
+            raise ValueError("Missing required config: vault_root and jekyll_root are required")
+            
+        # Convert paths to Path objects and validate
+        self.vault_path = Path(config['vault_root'])
+        self.jekyll_path = Path(config['jekyll_root'])
+        
+        if not self.vault_path.exists():
+            raise ValueError(f"Vault path does not exist: {self.vault_path}")
+        if not self.jekyll_path.exists():
+            raise ValueError(f"Jekyll path does not exist: {self.jekyll_path}")
+            
+        # Merge with defaults
+        self.config = {**self.DEFAULT_CONFIG, **config}
+        
+        # Initialize paths
+        self.atomics_root = self.vault_path / self.config['atomics_root']
+        self.jekyll_posts = self.jekyll_path / self.config['jekyll_posts']
+        
+        # Initialize components with validated config
+        self.atomic = AtomicManager()
+        if self.config.get('backup_count'):
+            self.atomic._cleanup_old_backups.keep = self.config['backup_count']
+            
+        self.changes = ChangeDetector(self.config)
         self.post_handler = PostHandler()
-        self.media_handler = MediaHandler(vault_path, jekyll_assets)
+        self.media_handler = MediaHandler(
+            self.vault_path,
+            self.jekyll_path / self.config['jekyll_assets']
+        )
+        
+        # Configure logging
+        logging.basicConfig(
+            level=logging.INFO if not config.get('debug') else logging.DEBUG,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
     
-    def sync_to_jekyll(self, source_path: Path, status: PostStatus) -> List[SyncState]:
-        """Sync a post from Obsidian to Jekyll"""
-        changes = []
+    def _apply_dev_settings(self, dev_settings: Dict):
+        """Apply development environment settings"""
+        # Override defaults with dev settings
+        self.DEFAULT_CONFIG.update(dev_settings)
+    
+    def validate_config(self) -> bool:
+        """
+        Validate current configuration
+        
+        Returns:
+            bool: True if config is valid
+            
+        Raises:
+            ValueError: If config is invalid
+        """
+        # Check required directories
+        required_dirs = [
+            (self.jekyll_posts, "Jekyll posts directory"),
+            (self.jekyll_path / self.config['jekyll_assets'], "Jekyll assets directory"),
+            (self.atomics_root, "Obsidian atomics directory")
+        ]
+        
+        for path, name in required_dirs:
+            if not path.exists():
+                raise ValueError(f"{name} does not exist: {path}")
+                
+        # Validate numeric settings
+        if not isinstance(self.config.get('backup_count', 5), int):
+            raise ValueError("backup_count must be an integer")
+            
+        # Validate boolean settings
+        if not isinstance(self.config.get('auto_cleanup', True), bool):
+            raise ValueError("auto_cleanup must be a boolean")
+            
+        return True
+    
+    def sync(self) -> List[SyncState]:
+        """
+        Perform full sync between Obsidian and Jekyll
+        
+        Returns:
+            List of sync states representing changes made
+        """
         try:
-            # Load post
-            post = frontmatter.load(str(source_path))
+            # Detect changes
+            changes = self.changes.detect()
+            if not changes:
+                logger.info("No changes detected")
+                return []
+                
+            # Process changes atomically
+            with self.atomic.batch() as batch:
+                for change in changes:
+                    # Add the sync operation
+                    batch.add(change)
+                    
+                    # Process any media references
+                    if change.operation != SyncOperation.DELETE:
+                        media_changes = self._process_media(change)
+                        for media_change in media_changes:
+                            batch.add(media_change)
             
-            # Determine target path based on status
-            if status == PostStatus.DRAFT:
-                target_dir = self.jekyll_path / "_drafts"
-            else:
-                target_dir = self.jekyll_posts
-            target_path = target_dir / source_path.name
+            logger.info(f"Synced {len(changes)} changes")
+            return changes
             
-            # Process post content
-            processed_post = self.post_handler.process_for_jekyll(post)
+        except Exception as e:
+            logger.error(f"Sync failed: {e}")
+            raise
+    
+    def _process_media(self, change: SyncState) -> List[SyncState]:
+        """Process media files referenced in a post"""
+        try:
+            # Load post content
+            post = frontmatter.load(str(change.source_path))
             
-            # Track media references
+            # Extract media references
             media_refs = self.media_handler.get_media_references(str(post))
+            media_changes = []
             
-            # Create or update post
-            if not target_path.exists():
-                operation = SyncOperation.CREATE
-            else:
-                operation = SyncOperation.UPDATE
-            
-            # Write post
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(target_path, 'wb') as f:
-                frontmatter.dump(processed_post, f)
-                f.write(b'\n')
-            
-            # Record change
-            changes.append(SyncState(
-                operation=operation,
-                source_path=source_path,
-                target_path=target_path,
-                status=status,
-                sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL
-            ))
-            
-            # Process media files
-            for media_ref in media_refs:
-                media_path = self.vault_path / media_ref
+            # Process each reference
+            for ref in media_refs:
+                media_path = self.vault_path / ref
                 if media_path.exists():
-                    target_media = self.media_handler.process_media_file(media_path)
-                    if target_media:
-                        changes.append(SyncState(
+                    # Process media file
+                    target_path = self.media_handler.process_media_file(media_path)
+                    if target_path:
+                        media_changes.append(SyncState(
                             operation=SyncOperation.CREATE,
                             source_path=media_path,
-                            target_path=self.jekyll_path / target_media.lstrip('/'),
-                            sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL
+                            target_path=self.jekyll_path / target_path.lstrip('/'),
+                            status=change.status,
+                            sync_direction=change.sync_direction
                         ))
             
-            return changes
+            return media_changes
             
         except Exception as e:
-            logger.error(f"Error syncing {source_path} to Jekyll: {e}")
+            logger.error(f"Error processing media for {change.source_path}: {e}")
+            return []
+    
+    def cleanup(self):
+        """Cleanup unused media files and old backups"""
+        try:
+            # Cleanup media
+            self.media_handler.cleanup_unused()
+            
+            # Cleanup old backups
+            self.atomic._cleanup_old_backups()
+            
+        except Exception as e:
+            logger.error(f"Cleanup failed: {e}")
             raise
-    
-    def sync_to_obsidian(self, source_path: Path) -> List[SyncState]:
-        """Sync a post from Jekyll to Obsidian"""
-        changes = []
-        try:
-            # Load post
-            post = frontmatter.load(str(source_path))
-            
-            # Determine target path
-            target_path = self.posts_path / source_path.name
-            
-            # Convert Jekyll paths to Obsidian paths
-            content = post.content
-            # Convert standard markdown images
-            content = content.replace('/assets/img/posts/', 'atomics/')
-            content = content.replace('![', '![[').replace(')', ']]')
-            post.content = content
-            
-            # Process media files from frontmatter and content
-            media_refs = set()
-            
-            # Check frontmatter
-            for key, value in post.metadata.items():
-                if isinstance(value, str) and value.startswith('/assets/img/posts/'):
-                    img_path = value
-                    img_name = img_path.split('/')[-1]
-                    media_refs.add((img_path, img_name))
-                    # Update frontmatter
-                    post.metadata[key] = f"![[atomics/{img_name}]]"
-            
-            # Check content for Jekyll-style images
-            jekyll_pattern = r'!\[.*?\]\(/assets/img/posts/([^)]+?)\)'
-            for match in re.finditer(jekyll_pattern, post.content):
-                img_name = match.group(1)
-                img_path = f"/assets/img/posts/{img_name}"
-                media_refs.add((img_path, img_name))
-            
-            # Process each media file
-            for img_path, img_name in media_refs:
-                source_img = self.jekyll_path / img_path.lstrip('/')
-                if source_img.exists():
-                    target_img = self.media_path / img_name
-                    target_img.parent.mkdir(parents=True, exist_ok=True)
-                    target_img.write_bytes(source_img.read_bytes())
-                    changes.append(SyncState(
-                        operation=SyncOperation.CREATE,
-                        source_path=source_img,
-                        target_path=target_img,
-                        sync_direction=SyncDirection.JEKYLL_TO_OBSIDIAN
-                    ))
-            
-            # Create or update post
-            if not target_path.exists():
-                operation = SyncOperation.CREATE
-            else:
-                operation = SyncOperation.UPDATE
-            
-            # Write post
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(target_path, 'wb') as f:
-                frontmatter.dump(post, f)
-                f.write(b'\n')
-            
-            # Record change
-            changes.append(SyncState(
-                operation=operation,
-                source_path=source_path,
-                target_path=target_path,
-                sync_direction=SyncDirection.JEKYLL_TO_OBSIDIAN
-            ))
-            
-            return changes
-            
-        except Exception as e:
-            logger.error(f"Error syncing {source_path} to Obsidian: {e}")
-            raise
-    
-    def delete_post(self, target_path: Path) -> Optional[SyncState]:
-        """Delete a post and return the change state"""
-        try:
-            if target_path.exists():
-                target_path.unlink()
-                return SyncState(
-                    operation=SyncOperation.DELETE,
-                    source_path=target_path,
-                    target_path=None,
-                    sync_direction=SyncDirection.NONE
-                )
-            return None
-        except Exception as e:
-            logger.error(f"Error deleting {target_path}: {e}")
-            raise 
-    
-    def _sync_post(self, state: SyncState) -> None:
-        """Sync a single post"""
-        try:
-            # Load source post
-            post = frontmatter.load(str(state.source_path))
-            
-            # Skip private posts
-            if self.post_handler.get_post_status(post) == PostStatus.PRIVATE:
-                return
-            
-            # Process post based on operation
-            if state.operation == SyncOperation.DELETE:
-                if state.target_path.exists():
-                    state.target_path.unlink()
-                
-            elif state.operation in [SyncOperation.CREATE, SyncOperation.UPDATE]:
-                # Process post content
-                if state.sync_direction == SyncDirection.OBSIDIAN_TO_JEKYLL:
-                    processed = self.post_handler.process_for_jekyll(post)
-                else:
-                    processed = self.post_handler.process_for_obsidian(post)
-                
-                # Update modification time
-                processed.metadata['modified'] = time.time()
-                processed.metadata['synced'] = True
-                
-                # Ensure target directory exists
-                state.target_path.parent.mkdir(parents=True, exist_ok=True)
-                
-                # Write processed post
-                frontmatter.dump(processed, str(state.target_path))
-                
-        except Exception as e:
-            logger.error(f"Error syncing post {state.source_path}: {e}")
-            raise 

@@ -3,7 +3,7 @@
 import logging
 import frontmatter
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set
 import datetime
 
 from .types import SyncState, SyncOperation, SyncDirection, PostStatus
@@ -12,397 +12,158 @@ from ..handlers.post import PostHandler
 logger = logging.getLogger(__name__)
 
 class ChangeDetector:
-    """Handles file change detection"""
+    """Handles all change detection logic"""
     
-    def __init__(
-        self,
-        vault_path: Path,
-        jekyll_path: Path,
-        posts_path: Path,
-        jekyll_posts: Path
-    ):
-        """Initialize change detector"""
-        self.vault_path = vault_path
-        self.jekyll_path = jekyll_path
-        self.posts_path = posts_path
-        self.jekyll_posts = jekyll_posts
+    def __init__(self, config: Dict):
+        self.config = config
+        self.vault_path = Path(config['vault_root'])
+        self.jekyll_path = Path(config['jekyll_root'])
+        self.atomics_root = self.vault_path / 'atomics'
+        self.jekyll_posts = self.jekyll_path / config.get('jekyll_posts', '_posts')
         self.post_handler = PostHandler()
-    
-    def detect_changes(self) -> List[SyncState]:
-        """
-        Detect changes in both Obsidian and Jekyll directories
         
-        Returns:
-            List of SyncState objects representing detected changes
-        """
-        changes = []
-        try:
-            # Get current state of both sides
-            obsidian_posts = {p.name: p for p in self.posts_path.glob('*.md')}
-            jekyll_posts = {
-                p.name: p for p in self.jekyll_posts.glob('*.md')
-            }
-            jekyll_drafts = {
-                p.name: p for p in (self.jekyll_path / "_drafts").glob('*.md')
-            }
-            
-            # Combine all Jekyll posts
-            all_jekyll_posts = jekyll_posts | jekyll_drafts
-            
-            # Find all unique post names
-            all_posts = set(obsidian_posts) | set(all_jekyll_posts)
-            
-            # Process each post
-            for post_name in all_posts:
-                obsidian_path = obsidian_posts.get(post_name)
-                jekyll_path = all_jekyll_posts.get(post_name)
+    def detect(self) -> List[SyncState]:
+        """Detect changes between Obsidian and Jekyll"""
+        obsidian_states = self._get_obsidian_states()
+        jekyll_states = self._get_jekyll_states()
+        return self._compare_states(obsidian_states, jekyll_states)
+    
+    def _get_obsidian_states(self) -> Dict[str, SyncState]:
+        """Get current state of Obsidian posts"""
+        states = {}
+        
+        # Recursively scan all markdown files in atomics
+        for post_path in self.atomics_root.rglob('*.md'):
+            try:
+                # Check if it's in a date folder (YYYY/MM/DD)
+                try:
+                    date_parts = list(post_path.relative_to(self.atomics_root).parts)[:3]
+                    if len(date_parts) < 3:
+                        continue  # Not in a date folder
+                    # Validate date format
+                    datetime.strptime('/'.join(date_parts), '%Y/%m/%d')
+                except (ValueError, IndexError):
+                    continue  # Not a valid date path
                 
-                if obsidian_path and jekyll_path:
-                    # Post exists in both - check for modifications
-                    changes.extend(self._check_modifications(
-                        obsidian_path,
-                        jekyll_path
-                    ))
-                    
-                elif obsidian_path:
-                    # Only in Obsidian - new or deleted from Jekyll
-                    changes.extend(self._handle_obsidian_only(
-                        obsidian_path,
-                        post_name
-                    ))
-                    
-                elif jekyll_path:
-                    # Only in Jekyll - new or deleted from Obsidian
-                    changes.extend(self._handle_jekyll_only(
-                        jekyll_path,
-                        post_name
-                    ))
-            
-            return changes
-            
-        except Exception as e:
-            logger.error(f"Error detecting changes: {e}")
-            raise
-    
-    def _check_modifications(
-        self,
-        obsidian_path: Path,
-        jekyll_path: Path
-    ) -> List[SyncState]:
-        """Check for modifications between Obsidian and Jekyll versions"""
-        changes = []
-        
-        # Load both versions
-        obsidian_post = frontmatter.load(str(obsidian_path))
-        jekyll_post = frontmatter.load(str(jekyll_path))
-        
-        # Get post status
-        status = self.post_handler.get_post_status(obsidian_post)
-        if status == PostStatus.PRIVATE:
-            return []
-        
-        # Check modification times
-        obsidian_time = obsidian_post.get('modified')
-        jekyll_time = jekyll_post.get('modified')
-        
-        # Convert modification times to timestamps if needed
-        if isinstance(obsidian_time, (str, datetime.date, datetime.datetime)):
-            obsidian_time = datetime.datetime.fromisoformat(str(obsidian_time)).timestamp()
-        if isinstance(jekyll_time, (str, datetime.date, datetime.datetime)):
-            jekyll_time = datetime.datetime.fromisoformat(str(jekyll_time)).timestamp()
-        
-        # Compare content first
-        if not self._files_equal(obsidian_path, jekyll_path):
-            # Files are different, prefer Obsidian changes
-            if not jekyll_post.get('synced'):
-                # Jekyll file hasn't been synced yet, treat as new
-                return []
+                # Check if it's a post
+                post = frontmatter.load(str(post_path))
+                status = self.post_handler.get_post_status(post)
+                if status is None:  # Not a post
+                    continue
                 
-            # Always sync from Obsidian to Jekyll
-            changes.append(self._create_sync_state(
-                operation=SyncOperation.UPDATE,
-                source_path=obsidian_path,
-                target_path=jekyll_path,
-                status=status,
-                direction=SyncDirection.OBSIDIAN_TO_JEKYLL
-            ))
-        
-        return changes
-    
-    def _files_equal(self, path1: Path, path2: Path) -> bool:
-        """Check if two files have the same content"""
-        try:
-            with open(path1) as f1, open(path2) as f2:
-                # Load both files as frontmatter posts
-                post1 = frontmatter.load(f1)
-                post2 = frontmatter.load(f2)
+                # Create Jekyll filename with date prefix
+                jekyll_name = f"{'-'.join(date_parts)}-{post_path.stem}.md"
+                target_path = self.jekyll_posts / jekyll_name
                 
-                # Compare metadata (excluding modified and synced)
-                meta1 = {k: v for k, v in post1.metadata.items() if k not in ['modified', 'synced']}
-                meta2 = {k: v for k, v in post2.metadata.items() if k not in ['modified', 'synced']}
-                if meta1 != meta2:
-                    return False
-                
-                # Compare content, ignoring whitespace
-                content1 = post1.content.strip()
-                content2 = post2.content.strip()
-                return content1 == content2
-                
-        except Exception:
-            return False
-    
-    def _handle_obsidian_only(
-        self,
-        obsidian_path: Path,
-        post_name: str
-    ) -> List[SyncState]:
-        """Handle post that only exists in Obsidian"""
-        changes = []
-        
-        # Load post
-        post = frontmatter.load(str(obsidian_path))
-        status = self.post_handler.get_post_status(post)
-        
-        if status == PostStatus.PRIVATE:
-            return []
-        
-        # Determine target path
-        if status == PostStatus.DRAFT:
-            target_dir = self.jekyll_path / "_drafts"
-        else:
-            target_dir = self.jekyll_posts
-        target_path = target_dir / post_name
-        
-        changes.append(self._create_sync_state(
-            operation=SyncOperation.CREATE,
-            source_path=obsidian_path,
-            target_path=target_path,
-            status=status,
-            direction=SyncDirection.OBSIDIAN_TO_JEKYLL
-        ))
-        
-        return changes
-    
-    def _handle_jekyll_only(
-        self,
-        jekyll_path: Path,
-        post_name: str
-    ) -> List[SyncState]:
-        """Handle post that only exists in Jekyll"""
-        changes = []
-        
-        # Load post
-        post = frontmatter.load(str(jekyll_path))
-        status = self.post_handler.get_post_status(post)
-        
-        if status == PostStatus.PRIVATE:
-            return []
-        
-        # Determine target path
-        target_path = self.posts_path / post_name
-        
-        # If we've synced before and the file is missing from Obsidian,
-        # it must have been deleted
-        if post.get('synced') == True and not target_path.exists():
-            changes.append(self._create_sync_state(
-                operation=SyncOperation.DELETE,
-                source_path=target_path,
-                target_path=jekyll_path,
-                status=status,
-                direction=SyncDirection.OBSIDIAN_TO_JEKYLL
-            ))
-        else:
-            changes.append(self._create_sync_state(
-                operation=SyncOperation.CREATE,
-                source_path=jekyll_path,
-                target_path=target_path,
-                status=status,
-                direction=SyncDirection.JEKYLL_TO_OBSIDIAN
-            ))
-        
-        return changes
-    
-    def _create_sync_state(
-        self,
-        operation: SyncOperation,
-        source_path: Path,
-        target_path: Path,
-        status: PostStatus,
-        direction: SyncDirection
-    ) -> SyncState:
-        """Create a SyncState object with the given parameters"""
-        return SyncState(
-            operation=operation,
-            source_path=source_path,
-            target_path=target_path,
-            status=status,
-            sync_direction=direction
-        )
-    
-    def _check_obsidian_changes(
-        self,
-        obsidian_posts: Dict[str, Path],
-        jekyll_posts: Dict[str, Path],
-        jekyll_drafts: Dict[str, Path],
-        processed: Set[str]
-    ) -> List[SyncState]:
-        """Check for changes in Obsidian posts"""
-        changes = []
-        
-        for post_name, post_path in obsidian_posts.items():
-            processed.add(post_name)
-            
-            # Load post to check status
-            post = frontmatter.load(str(post_path))
-            status = self.post_handler.get_post_status(post)
-            
-            # Determine target path based on status
-            if status == PostStatus.DRAFT:
-                target_dir = self.jekyll_path / "_drafts"
-            else:
-                target_dir = self.jekyll_posts
-            target_path = target_dir / post_name
-            
-            # Check if post exists in Jekyll
-            jekyll_path = jekyll_posts.get(post_name) or jekyll_drafts.get(post_name)
-            
-            if not jekyll_path:
-                # New post
-                changes.append(SyncState(
-                    operation=SyncOperation.CREATE,
+                states[jekyll_name] = SyncState(
+                    operation=SyncOperation.NONE,
                     source_path=post_path,
                     target_path=target_path,
                     status=status,
+                    sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL,
+                    modified=self._get_modified_time(post, post_path)
+                )
+                
+            except Exception as e:
+                logger.error(f"Error reading file {post_path}: {e}")
+                continue
+        return states
+    
+    def _get_jekyll_states(self) -> Dict[str, SyncState]:
+        """Get current state of Jekyll posts"""
+        states = {}
+        for posts_dir in [self.jekyll_posts, self.jekyll_path / '_drafts']:
+            if not posts_dir.exists():
+                continue
+            for post_path in posts_dir.glob('*.md'):
+                try:
+                    # Extract date from Jekyll filename (YYYY-MM-DD-title.md)
+                    try:
+                        date_str = '-'.join(post_path.stem.split('-')[:3])
+                        date = datetime.strptime(date_str, '%Y-%m-%d')
+                        date_path = date.strftime('%Y/%m/%d')
+                    except (ValueError, IndexError):
+                        logger.error(f"Invalid Jekyll filename format: {post_path}")
+                        continue
+                    
+                    post = frontmatter.load(str(post_path))
+                    status = self.post_handler.get_post_status(post)
+                    if status != PostStatus.PRIVATE:
+                        # Create proper atomics path with date structure
+                        target_path = self.atomics_root / date_path / post_path.stem.split('-', 3)[3].strip() + '.md'
+                        states[post_path.name] = SyncState(
+                            operation=SyncOperation.NONE,
+                            source_path=post_path,
+                            target_path=target_path,
+                            status=status,
+                            sync_direction=SyncDirection.JEKYLL_TO_OBSIDIAN,
+                            modified=self._get_modified_time(post, post_path)
+                        )
+                except Exception as e:
+                    logger.error(f"Error reading Jekyll post {post_path}: {e}")
+                    continue
+        return states
+    
+    def _compare_states(self, obsidian_states: Dict[str, SyncState], 
+                       jekyll_states: Dict[str, SyncState]) -> List[SyncState]:
+        """Compare states and detect changes"""
+        changes = []
+        all_posts = set(obsidian_states) | set(jekyll_states)
+        
+        for post_name in all_posts:
+            obsidian_state = obsidian_states.get(post_name)
+            jekyll_state = jekyll_states.get(post_name)
+            
+            if obsidian_state and jekyll_state:
+                # Post exists in both - check for modifications
+                if obsidian_state.modified > jekyll_state.modified:
+                    changes.append(SyncState(
+                        operation=SyncOperation.UPDATE,
+                        source_path=obsidian_state.source_path,
+                        target_path=obsidian_state.target_path,
+                        status=obsidian_state.status,
+                        sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL
+                    ))
+                elif jekyll_state.modified > obsidian_state.modified:
+                    # ✅ When syncing from Jekyll, use existing Obsidian path
+                    changes.append(SyncState(
+                        operation=SyncOperation.UPDATE,
+                        source_path=jekyll_state.source_path,
+                        target_path=obsidian_state.target_path,  # Keep original path
+                        status=jekyll_state.status,
+                        sync_direction=SyncDirection.JEKYLL_TO_OBSIDIAN
+                    ))
+            
+            elif obsidian_state:
+                # Only in Obsidian - new post
+                changes.append(SyncState(
+                    operation=SyncOperation.CREATE,
+                    source_path=obsidian_state.source_path,
+                    target_path=obsidian_state.target_path,
+                    status=obsidian_state.status,
                     sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL
                 ))
-            else:
-                # Check for modifications
-                jekyll_post = frontmatter.load(str(jekyll_path))
-                
-                # Check modification times
-                obsidian_time = post.get('modified')
-                jekyll_time = jekyll_post.get('modified')
-                
-                if obsidian_time and jekyll_time:
-                    # Use frontmatter times if available
-                    if obsidian_time > jekyll_time:
-                        changes.append(SyncState(
-                            operation=SyncOperation.UPDATE,
-                            source_path=post_path,
-                            target_path=target_path,
-                            status=status,
-                            sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL
-                        ))
-                else:
-                    # Fallback to file stats
-                    obsidian_stat = post_path.stat().st_mtime
-                    jekyll_stat = jekyll_path.stat().st_mtime
-                    if obsidian_stat > jekyll_stat:
-                        changes.append(SyncState(
-                            operation=SyncOperation.UPDATE,
-                            source_path=post_path,
-                            target_path=target_path,
-                            status=status,
-                            sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL
-                        ))
-        
-        # Check for deleted posts in Jekyll
-        for post_name in set(obsidian_posts):
-            if post_name not in jekyll_posts and post_name not in jekyll_drafts:
-                # Post exists in Obsidian but not in Jekyll - it was deleted
-                obsidian_path = obsidian_posts[post_name]
-                
-                # Load post to check status
-                post = frontmatter.load(str(obsidian_path))
-                status = self.post_handler.get_post_status(post)
-                
-                # Skip private posts
-                if status == PostStatus.PRIVATE:
-                    continue
-                    
-                # Determine target path based on status
-                if status == PostStatus.DRAFT:
-                    target_dir = self.jekyll_path / "_drafts"
-                else:
-                    target_dir = self.jekyll_posts
-                target_path = target_dir / post_name
-                
+            
+            elif jekyll_state and jekyll_state.source_path.exists():
+                # Only in Jekyll - create in proper date folder
                 changes.append(SyncState(
-                    operation=SyncOperation.DELETE,
-                    source_path=obsidian_path,
-                    target_path=target_path,
-                    sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL,
-                    status=status
+                    operation=SyncOperation.CREATE,
+                    source_path=jekyll_state.source_path,
+                    target_path=jekyll_state.target_path,
+                    status=jekyll_state.status,
+                    sync_direction=SyncDirection.JEKYLL_TO_OBSIDIAN
                 ))
         
         return changes
     
-    def _check_jekyll_changes(
-        self,
-        obsidian_posts: Dict[str, Path],
-        jekyll_posts: Dict[str, Path],
-        jekyll_drafts: Dict[str, Path],
-        processed: Set[str]
-    ) -> List[SyncState]:
-        """Check for changes in Jekyll posts"""
-        changes = []
+    def _get_modified_time(self, post: frontmatter.Post, path: Path) -> float:
+        """Get modification time from frontmatter or file stats"""
+        # Try frontmatter first
+        modified = post.get('modified')
+        if modified:
+            if isinstance(modified, (str, datetime)):
+                return datetime.fromisoformat(str(modified)).timestamp()
+            return float(modified)
         
-        # Check both published and draft posts
-        for posts_dict in [jekyll_posts, jekyll_drafts]:
-            for post_name, post_path in posts_dict.items():
-                if post_name in processed:
-                    continue
-                    
-                processed.add(post_name)
-                
-                # Load post to check status
-                post = frontmatter.load(str(post_path))
-                status = self.post_handler.get_post_status(post)
-                
-                # Determine target path in Obsidian
-                target_path = self.posts_path / post_name
-                
-                # Check if post exists in Obsidian
-                obsidian_path = obsidian_posts.get(post_name)
-                
-                if not obsidian_path:
-                    # New post
-                    changes.append(SyncState(
-                        operation=SyncOperation.CREATE,
-                        source_path=post_path,
-                        target_path=target_path,
-                        status=status,
-                        sync_direction=SyncDirection.JEKYLL_TO_OBSIDIAN
-                    ))
-                else:
-                    # Check for modifications
-                    obsidian_post = frontmatter.load(str(obsidian_path))
-                    
-                    # Check modification times
-                    jekyll_time = post.get('modified')
-                    obsidian_time = obsidian_post.get('modified')
-                    
-                    if jekyll_time and obsidian_time:
-                        # Use frontmatter times if available
-                        if jekyll_time > obsidian_time:
-                            changes.append(SyncState(
-                                operation=SyncOperation.UPDATE,
-                                source_path=post_path,
-                                target_path=target_path,
-                                status=status,
-                                sync_direction=SyncDirection.JEKYLL_TO_OBSIDIAN
-                            ))
-                    else:
-                        # Fallback to file stats
-                        jekyll_stat = post_path.stat().st_mtime
-                        obsidian_stat = obsidian_path.stat().st_mtime
-                        if jekyll_stat > obsidian_stat:
-                            changes.append(SyncState(
-                                operation=SyncOperation.UPDATE,
-                                source_path=post_path,
-                                target_path=target_path,
-                                status=status,
-                                sync_direction=SyncDirection.JEKYLL_TO_OBSIDIAN
-                            ))
-        
-        return changes 
+        # Fallback to file stats
+        return path.stat().st_mtime

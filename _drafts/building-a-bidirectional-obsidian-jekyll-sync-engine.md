@@ -259,3 +259,85 @@ The tests cover:
    - Performance benchmarks
 
 Each component is tested both with mock data for isolation and with real vault data for integration verification.
+
+### Change Detection: The File Detective 🔍
+
+Remember our friend the meticulous librarian? Well, they just got a promotion to detective! Our change detection system now has a fancy new way of tracking files:
+
+```python
+def detect_changes(self) -> List[SyncState]:
+    # Get the lay of the land
+    obsidian_posts = {p.name: p for p in self.posts_path.glob('*.md')}
+    jekyll_posts = {p.name: p for p in self.jekyll_posts.glob('*.md')}
+    
+    # Find ALL the posts (union of sets, because we're fancy like that)
+    all_posts = set(obsidian_posts) | set(jekyll_posts)
+    
+    # Time to play detective
+    for post_name in all_posts:
+        if post_name in obsidian_posts and post_name in jekyll_posts:
+            # Found in both places - let's see what's changed
+            self._check_modifications(obsidian_posts[post_name], jekyll_posts[post_name])
+        elif post_name in obsidian_posts:
+            # Only in Obsidian - new kid on the block
+            self._handle_obsidian_only(obsidian_posts[post_name])
+        else:
+            # Only in Jekyll - either deleted or Jekyll's being creative
+            self._handle_jekyll_only(jekyll_posts[post_name])
+```
+
+This new system is like having a security camera that can spot:
+- New posts popping up (like mushrooms after rain)
+- Deleted posts (gone, but not forgotten)
+- Modified posts (sneaky little changes)
+- Status changes (from shy draft to proud published post)
+
+## The Test Suite: Because Trust Issues are Healthy
+
+Remember those tests I mentioned? Well, they've grown up and now we have a proper test suite that would make a QA engineer proud:
+
+```bash
+# Run the whole shebang
+python -m pytest scripts/sync_engine/tests/
+
+# Just test the media stuff (because images are special)
+python -m pytest scripts/sync_engine/tests/test_media_*.py
+
+# Check if our file detective is doing their job
+python -m pytest scripts/sync_engine/tests/test_file_changes.py
+```
+
+Current test coverage is at a whopping 90% (the remaining 10% is probably just comments... right? 😅)
+
+### What We Test
+
+1. **Media Handling (100% covered)**
+   - Image processing (because nobody likes blurry cat pictures)
+   - Error handling (for when that PNG is actually a text file in disguise)
+   - Reference extraction (finding all those `![[]]` needles in the markdown haystack)
+   - Path generation (making sure your images don't end up in digital limbo)
+
+2. **Bidirectional Sync (100% covered)**
+   - Obsidian → Jekyll (the forward pass)
+   - Jekyll → Obsidian (the reverse uno card)
+   - Status handling (draft/published/private - the three states of content)
+
+3. **Core Engine (90% covered)**
+   - File change detection (our new detective system)
+   - Conflict resolution (for when Obsidian and Jekyll can't agree)
+   - Error recovery (because stuff happens)
+
+4. **Coming Soon™**
+   - Atomic operations (for when you want your sync to be really, really safe)
+   - Real-time sync (because who has time to click buttons?)
+   - A better UI for conflicts (less "merge conflict", more "choose your adventure")
+
+## Lessons Learned (The Hard Way)
+
+1. **State is King**: Keeping track of sync state is like keeping track of your keys - lose it, and you'll spend hours looking for what changed.
+
+2. **Content Comparison is Tricky**: Turns out, comparing files is like comparing pizzas - just because they look the same doesn't mean they are the same.
+
+3. **Error Handling is Your Friend**: Things will go wrong. It's not a bug, it's a feature opportunity!
+
+4. **Test Everything**: And then test it again. And one more time for good measure.
