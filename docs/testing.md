@@ -27,8 +27,13 @@
   - [x] Frontmatter modification time
   - [x] File modification time fallback
 
-### Core Engine (In Progress)
-- [ ] File change detection
+### Core Engine (75%)
+- [x] File change detection
+  - [x] New file detection
+  - [x] Modified file detection
+  - [x] Deleted file detection
+  - [x] Status change detection
+  - [x] Multiple change detection
 - [ ] Atomic operations
 - [ ] Configuration handling
 - [ ] Error recovery
@@ -50,6 +55,10 @@
   - Jekyll to Obsidian sync
   - Conflict resolution
   - Status handling
+- `test_file_changes.py`: Change detection
+  - New/modified/deleted files
+  - Status changes
+  - Multiple changes
 
 ## Running Tests
 
@@ -64,15 +73,16 @@ python -m pytest scripts/sync_engine/tests/test_bidirectional_sync.py
 python -m pytest --cov=sync_engine scripts/sync_engine/tests/
 ```
 
-## Current Coverage: 70%
+## Current Coverage: 75%
 
 ### High Coverage Areas
 - Media handling (100%)
 - Bidirectional sync (100%)
 - Path resolution (100%)
+- File change detection (100%)
 
 ### Areas Needing Coverage
-- Core engine internals
+- Atomic operations
 - Configuration handling
 - Error recovery
-- End-to-end workflows 
+- End-to-end workflows
