@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 from sync_engine.core.engine import SyncEngineV2
 from sync_engine.core.types import SyncOperation, SyncDirection, PostStatus
+from sync_engine.core.config import SyncConfig, ConfigManager
 
 @pytest.fixture
 def change_setup(tmp_path):
@@ -14,41 +15,46 @@ def change_setup(tmp_path):
     jekyll_root = tmp_path / "jekyll"
     
     # Create standard structure
-    (vault_root / "_posts").mkdir(parents=True)
-    (vault_root / "atomics").mkdir()
+    (vault_root / "atomics").mkdir(parents=True)
     (jekyll_root / "_posts").mkdir(parents=True)
     (jekyll_root / "assets/img/posts").mkdir(parents=True)
     
-    # Initialize engine
-    engine = SyncEngineV2(
-        vault_root=vault_root,
-        jekyll_root=jekyll_root,
-        vault_posts="_posts",
-        vault_media="atomics",
-        jekyll_posts="_posts",
-        jekyll_assets="assets/img/posts"
-    )
+    # Create config
+    config = ConfigManager.load_from_dict({
+        'vault_path': vault_root,
+        'jekyll_path': jekyll_root,
+        'vault_atomics': "atomics",
+        'jekyll_posts': "_posts",
+        'jekyll_assets': "assets/img/posts",
+        'debug': True  # Enable debug logging for tests
+    })
+    
+    # Initialize engine with config
+    engine = SyncEngineV2(config=config)
     
     return {
         'engine': engine,
         'vault': vault_root,
-        'jekyll': jekyll_root
+        'jekyll': jekyll_root,
+        'config': config
     }
 
 def test_detect_new_file(change_setup):
     """Test detection of new files"""
-    # Create new post in Obsidian
+    # Create new post in daily folder
+    date_path = change_setup['vault'] / "atomics/2024/01/15"
+    date_path.mkdir(parents=True)
+    
     post_content = """---
 title: New Post
 status: published
-date: 2024-01-01
 ---
 
 # New Post
 
 Test content
 """
-    post_path = change_setup['vault'] / "_posts/2024-01-01-new-post.md"
+    post_path = date_path / "new-post.md"
     post_path.write_text(post_content)
     
     # Run change detection
@@ -64,18 +70,20 @@ Test content
 
 def test_detect_modified_file(change_setup):
     """Test detection of modified files"""
-    # Create initial post
+    # Create initial post in daily folder
+    date_path = change_setup['vault'] / "atomics/2024/01/15"
+    date_path.mkdir(parents=True)
+    
     post_content = """---
 title: Test Post
 status: published
-date: 2024-01-01
 ---
 
 # Test Post
 
 Initial content
 """
-    post_path = change_setup['vault'] / "_posts/2024-01-01-test-post.md"
+    post_path = date_path / "test-post.md"
     post_path.write_text(post_content)
     
     # Initial sync
@@ -89,7 +97,6 @@ Initial content
     modified_content = """---
 title: Test Post
 status: published
-date: 2024-01-01
 modified: 2024-01-02
 ---
 
@@ -111,18 +118,20 @@ Updated content
 
 def test_detect_deleted_file(change_setup):
     """Test detection of deleted files"""
-    # Create initial post
+    # Create initial post in daily folder
+    date_path = change_setup['vault'] / "atomics/2024/01/15"
+    date_path.mkdir(parents=True)
+    
     post_content = """---
 title: Test Post
 status: published
-date: 2024-01-01
 ---
 
 # Test Post
 
 Test content
 """
-    post_path = change_setup['vault'] / "_posts/2024-01-01-test-post.md"
+    post_path = date_path / "test-post.md"
     post_path.write_text(post_content)
     
     # Initial sync
@@ -144,18 +153,20 @@ Test content
 
 def test_detect_status_change(change_setup):
     """Test detection of post status changes"""
-    # Create initial post as published
+    # Create initial post as published in daily folder
+    date_path = change_setup['vault'] / "atomics/2024/01/15"
+    date_path.mkdir(parents=True)
+    
     post_content = """---
 title: Test Post
 status: published
-date: 2024-01-01
 ---
 
 # Test Post
 
 Test content
 """
-    post_path = change_setup['vault'] / "_posts/2024-01-01-test-post.md"
+    post_path = date_path / "test-post.md"
     post_path.write_text(post_content)
     
     # Initial sync
@@ -166,7 +177,6 @@ Test content
     draft_content = """---
 title: Test Post
 status: draft
-date: 2024-01-01
 ---
 
 # Test Post
@@ -188,6 +198,10 @@ Test content
 
 def test_detect_multiple_changes(change_setup):
     """Test detection of multiple changes"""
+    # Create daily folder
+    date_path = change_setup['vault'] / "atomics/2024/01/15"
+    date_path.mkdir(parents=True)
+    
     # Create initial posts
     posts = [
         ("post1.md", "published"),
@@ -199,14 +213,13 @@ def test_detect_multiple_changes(change_setup):
         content = f"""---
 title: {filename}
 status: {status}
-date: 2024-01-01
 ---
 
 # {filename}
 
 Test content
 """
-        post_path = change_setup['vault'] / "_posts" / filename
+        post_path = date_path / filename
         post_path.write_text(content)
     
     # Initial sync
@@ -215,23 +228,21 @@ Test content
     
     # Make various changes:
     # 1. Modify post1
-    (change_setup['vault'] / "_posts/post1.md").write_text("""---
+    (date_path / "post1.md").write_text("""---
 title: Post 1 Updated
 status: published
-date: 2024-01-01
 ---
 
 Updated content
 """)
     
     # 2. Delete post2
-    (change_setup['vault'] / "_posts/post2.md").unlink()
+    (date_path / "post2.md").unlink()
     
     # 3. Create new post4
-    (change_setup['vault'] / "_posts/post4.md").write_text("""---
+    (date_path / "post4.md").write_text("""---
 title: Post 4
 status: published
-date: 2024-01-01
 ---
 
 New post

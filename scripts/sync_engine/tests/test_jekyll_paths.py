@@ -4,18 +4,31 @@ import pytest
 from pathlib import Path
 from dotenv import load_dotenv
 from sync_engine.handlers.media import MediaHandler
+from sync_engine.core.config import SyncConfig, ConfigManager
 
 # Load environment variables
 load_dotenv()
 
 @pytest.fixture
-def sample_files(tmp_path):
+def test_config(tmp_path):
+    """Create test configuration"""
+    return ConfigManager.load_from_dict({
+        'vault_path': tmp_path / 'vault',
+        'jekyll_path': tmp_path / 'jekyll',
+        'vault_atomics': 'atomics',
+        'jekyll_posts': '_posts',
+        'jekyll_assets': 'assets/img/posts',
+        'debug': True  # Enable debug logging for tests
+    })
+
+@pytest.fixture
+def sample_files(test_config):
     """Create sample files for testing"""
     files = {}
     
     # Create test files with content
     def create_test_file(path: Path, content: bytes = b'test content'):
-        full_path = tmp_path / path
+        full_path = test_config.vault_path / path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_bytes(content)
         return full_path
@@ -32,9 +45,9 @@ def sample_files(tmp_path):
     
     return files
 
-def test_basic_path_generation(tmp_path, sample_files):
+def test_basic_path_generation(test_config, sample_files):
     """Test basic path generation"""
-    handler = MediaHandler(tmp_path, tmp_path / "assets")
+    handler = MediaHandler(test_config)
     
     # Simple filename
     jekyll_path = handler.get_jekyll_media_path(sample_files['simple'])
@@ -47,13 +60,13 @@ def test_basic_path_generation(tmp_path, sample_files):
     assert '-' in jekyll_path.stem  # Spaces converted to dashes
     assert ' ' not in jekyll_path.name  # No spaces in final name
 
-def test_complex_path_handling(tmp_path, sample_files):
+def test_complex_path_handling(test_config, sample_files):
     """Test handling of complex paths"""
-    handler = MediaHandler(tmp_path, tmp_path / "assets")
+    handler = MediaHandler(test_config)
     
     # Complex nested path
     jekyll_path = handler.get_jekyll_media_path(sample_files['complex'])
-    assert jekyll_path.parent == tmp_path / "assets"  # Should be flat
+    assert jekyll_path.parent == test_config.jekyll_assets_path  # Should be flat
     assert 'folder-with-spaces' in jekyll_path.stem  # Keep path info in name
     assert 'complex-image' in jekyll_path.stem  # Keep original name
     
@@ -63,9 +76,9 @@ def test_complex_path_handling(tmp_path, sample_files):
     assert '2024' in jekyll_path.stem  # Keep date info
     assert 'pasted-image' in jekyll_path.stem.lower()  # Keep descriptive name
 
-def test_special_character_handling(tmp_path, sample_files):
+def test_special_character_handling(test_config, sample_files):
     """Test handling of special characters"""
-    handler = MediaHandler(tmp_path, tmp_path / "assets")
+    handler = MediaHandler(test_config)
     
     # Special characters
     jekyll_path = handler.get_jekyll_media_path(sample_files['special_chars'])
@@ -86,14 +99,14 @@ def test_special_character_handling(tmp_path, sample_files):
     assert jekyll_path.name.count('.') == 1  # Only extension dot
     assert '..' not in jekyll_path.name  # No consecutive dots
 
-def test_collision_handling(tmp_path):
+def test_collision_handling(test_config):
     """Test handling of potential filename collisions"""
-    handler = MediaHandler(tmp_path, tmp_path / "assets")
+    handler = MediaHandler(test_config)
     
     # Create files with same name in different folders
     paths = []
     for i in range(3):
-        path = tmp_path / f'folder{i}/image.png'
+        path = test_config.atomics_path / f'folder{i}/image.png'
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(f'content{i}'.encode())
         paths.append(path)
@@ -109,9 +122,9 @@ def test_collision_handling(tmp_path):
     assert all('-' in s for s in stems)  # All have hash
     assert len(set(stems)) == len(paths)  # All unique
 
-def test_long_path_handling(tmp_path, sample_files):
+def test_long_path_handling(test_config, sample_files):
     """Test handling of very long paths"""
-    handler = MediaHandler(tmp_path, tmp_path / "assets")
+    handler = MediaHandler(test_config)
     
     # Very long path
     jekyll_path = handler.get_jekyll_media_path(sample_files['long'])

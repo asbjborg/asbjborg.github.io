@@ -4,9 +4,22 @@ import pytest
 from pathlib import Path
 from dotenv import load_dotenv
 from sync_engine.handlers.media import MediaHandler
+from sync_engine.core.config import SyncConfig, ConfigManager
 
 # Load environment variables
 load_dotenv()
+
+@pytest.fixture
+def test_config(tmp_path):
+    """Create test configuration"""
+    return ConfigManager.load_from_dict({
+        'vault_path': tmp_path / 'vault',
+        'jekyll_path': tmp_path / 'jekyll',
+        'vault_atomics': 'atomics',
+        'jekyll_posts': '_posts',
+        'jekyll_assets': 'assets/img/posts',
+        'debug': True  # Enable debug logging for tests
+    })
 
 @pytest.fixture
 def sample_content():
@@ -33,9 +46,9 @@ Invalid references:
 - ![regular markdown](regular-markdown.png)  # Regular markdown
 """
 
-def test_extract_media_references(tmp_path, sample_content):
+def test_extract_media_references(test_config, sample_content):
     """Test extraction of media references from content"""
-    handler = MediaHandler(tmp_path, tmp_path / "assets")
+    handler = MediaHandler(test_config)
     
     refs = handler.get_media_references(sample_content)
     
@@ -56,9 +69,9 @@ def test_extract_media_references(tmp_path, sample_content):
     assert "not an image" not in refs
     assert "regular-markdown.png" not in refs  # Regular markdown style
 
-def test_frontmatter_image_references(tmp_path):
+def test_frontmatter_image_references(test_config):
     """Test extraction of image references from frontmatter"""
-    handler = MediaHandler(tmp_path, tmp_path / "assets")
+    handler = MediaHandler(test_config)
     frontmatter = {
         'title': 'Test Post',
         'image': '![[featured/image.jpg]]',
@@ -74,9 +87,9 @@ def test_frontmatter_image_references(tmp_path):
     assert "gallery/image1.png" in refs
     assert "gallery/image2.jpg" in refs
 
-def test_duplicate_references(tmp_path):
+def test_duplicate_references(test_config):
     """Test handling of duplicate references"""
-    handler = MediaHandler(tmp_path, tmp_path / "assets")
+    handler = MediaHandler(test_config)
     content = """
     First reference: ![[image.png]]
     Same image again: ![[image.png]]
@@ -90,9 +103,9 @@ def test_duplicate_references(tmp_path):
     assert "image.png" in refs
     assert "folder/image.png" in refs
 
-def test_malformed_references(tmp_path):
+def test_malformed_references(test_config):
     """Test handling of malformed references"""
-    handler = MediaHandler(tmp_path, tmp_path / "assets")
+    handler = MediaHandler(test_config)
     content = """
     Malformed references:
     ![[]]

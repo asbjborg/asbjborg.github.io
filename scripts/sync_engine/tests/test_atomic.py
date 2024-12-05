@@ -4,10 +4,25 @@ import shutil
 import time
 from sync_engine.core.atomic import AtomicManager, AtomicBatch
 from sync_engine.core.types import SyncState, SyncOperation
+from sync_engine.core.config import SyncConfig, ConfigManager
 
 @pytest.fixture
-def atomic_manager(tmp_path):
-    manager = AtomicManager()
+def test_config(tmp_path):
+    """Create test configuration"""
+    return ConfigManager.load_from_dict({
+        'vault_path': tmp_path / 'vault',
+        'jekyll_path': tmp_path / 'jekyll',
+        'vault_atomics': 'atomics',
+        'jekyll_posts': '_posts',
+        'jekyll_assets': 'assets/img/posts',
+        'backup_count': 5,  # Keep 5 most recent backups
+        'debug': True  # Enable debug logging for tests
+    })
+
+@pytest.fixture
+def atomic_manager(test_config, tmp_path):
+    """Create atomic manager with test config"""
+    manager = AtomicManager(config=test_config)
     manager.backup_dir = tmp_path / ".atomic_backups"
     return manager
 
