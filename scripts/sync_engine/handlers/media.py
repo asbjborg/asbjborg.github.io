@@ -193,10 +193,38 @@ class MediaHandler:
                 # Skip common parent directories
                 if part in {'atomics', 'attachments'}:
                     continue
+                
+                # Split extension from last part
+                if part == rel_path.parts[-1]:
+                    base, ext = os.path.splitext(part)
+                else:
+                    base, ext = part, ''
+                
                 # Clean part name
-                clean_part = part.lower().replace(' ', '-')
-                clean_part = ''.join(c for c in clean_part if c.isalnum() or c in '-_.')
-                clean_parts.append(clean_part)
+                clean_part = base.lower()
+                # Normalize unicode to closest ASCII equivalent
+                clean_part = clean_part.replace('é', 'e')  # Common replacements
+                clean_part = clean_part.replace('è', 'e')
+                clean_part = clean_part.replace('ê', 'e')
+                clean_part = clean_part.replace('ë', 'e')
+                clean_part = clean_part.replace('à', 'a')
+                clean_part = clean_part.replace('â', 'a')
+                clean_part = clean_part.replace('ä', 'a')
+                clean_part = clean_part.replace('ô', 'o')
+                clean_part = clean_part.replace('ö', 'o')
+                clean_part = clean_part.replace('û', 'u')
+                clean_part = clean_part.replace('ü', 'u')
+                # Then remove any remaining non-ASCII
+                clean_part = clean_part.encode('ascii', 'ignore').decode()
+                # Replace spaces and special chars with dashes
+                clean_part = re.sub(r'[^a-z0-9]+', '-', clean_part)
+                # Remove leading/trailing dashes
+                clean_part = clean_part.strip('-')
+                # Collapse multiple dashes
+                clean_part = re.sub(r'-+', '-', clean_part)
+                
+                if clean_part:  # Only add non-empty parts
+                    clean_parts.append(clean_part)
             
             # Combine parts with hash
             stem = '-'.join(clean_parts[:-1]) if len(clean_parts) > 1 else ''
@@ -206,9 +234,15 @@ class MediaHandler:
             else:
                 new_name = name
             
-            # Add hash before extension
-            base, ext = os.path.splitext(new_name)
-            new_filename = f"{base}-{file_hash}{ext}"
+            # Get original extension
+            _, ext = os.path.splitext(rel_path.name)
+            
+            # Ensure base is not too long
+            if len(new_name) > 80:  # Leave room for hash and extension
+                new_name = new_name[:77] + '...'
+            
+            # Add hash and extension
+            new_filename = f"{new_name}-{file_hash}{ext}"
             
             return self.assets_path / new_filename
             
