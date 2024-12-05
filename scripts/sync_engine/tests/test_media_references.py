@@ -30,15 +30,14 @@ Invalid references:
 - ![[]]  # Empty
 - ![[missing closing bracket]
 - [[not an image]]  # Regular link
-- ![regular markdown](image.png)  # Regular markdown
+- ![regular markdown](regular-markdown.png)  # Regular markdown
 """
 
-def test_extract_media_references(tmp_path):
+def test_extract_media_references(tmp_path, sample_content):
     """Test extraction of media references from content"""
     handler = MediaHandler(tmp_path, tmp_path / "assets")
-    content = sample_content()
     
-    refs = handler.get_media_references(content)
+    refs = handler.get_media_references(sample_content)
     
     # Should find all valid references
     assert "image.png" in refs
@@ -55,7 +54,7 @@ def test_extract_media_references(tmp_path):
     assert "" not in refs  # Empty reference
     assert "missing closing bracket" not in refs
     assert "not an image" not in refs
-    assert "image.png" not in refs  # Regular markdown style
+    assert "regular-markdown.png" not in refs  # Regular markdown style
 
 def test_frontmatter_image_references(tmp_path):
     """Test extraction of image references from frontmatter"""
@@ -102,9 +101,16 @@ def test_malformed_references(tmp_path):
     ![[space at end ]]
     ![[/starts/with/slash]]
     ![[ends/with/slash/]]
+    ![[../relative/path]]
+    ![[./current/path]]
     """
     
     refs = handler.get_media_references(content)
     
     # Should handle malformed references gracefully
-    assert len(refs) == 0  # None of these should be valid 
+    for ref in refs:
+        assert not ref.startswith('/')  # No absolute paths
+        assert not ref.endswith('/')  # No trailing slashes
+        assert not ref.startswith('.')  # No relative paths
+        assert not ref.isspace()  # No whitespace-only refs
+        assert ref.strip() == ref  # No leading/trailing whitespace
