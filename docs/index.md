@@ -1,25 +1,27 @@
 # Sync Engine Documentation
 
-## Overview
-The sync engine manages bidirectional synchronization between an Obsidian vault and a Jekyll blog. All documentation is organized by component for easy reference.
+## Strategy & Implementation
+- [Sync Strategy](strategy/sync-strategy.md) - Core strategy and approach
+- Implementation
+  - [Checklist](strategy/implementation/checklist.md) - Progress tracking
+  - [Core Tasks](strategy/implementation/core-tasks.md) - Implementation details
 
-## Core Components
-- [Change Detection](components/change-detection.md)
-- [Atomic Operations](components/atomic-operations.md)
-- [Post Handler](components/post-handler.md)
-- [Media Handler](components/media-handler.md)
+## Components
+- [Change Detection](components/change-detection.md) - File change detection system
+- [Atomic Operations](components/atomic-operations.md) - Safe file operations
+- [Post Handler](components/post-handler.md) - Post processing and conversion
+- [Media Handler](components/media-handler.md) - Media file handling
 
 ## Guides
-- [Configuration Guide](guides/configuration.md)
-- [Usage Guide](guides/usage.md)
-- [Error Handling](guides/error-handling.md)
-- [Performance Guide](guides/performance.md)
+- [Configuration](guides/configuration.md) - Configuration options and setup
+- [Error Handling](guides/error-handling.md) - Error handling and recovery
+- [Usage Guide](guides/usage.md) - How to use the sync engine
 
 ## Reference
-- [File Structure](reference/file-structure.md)
-- [API Reference](reference/api.md)
-- [Testing Guide](reference/testing.md)
+- [File Structure](reference/file-structure.md) - File organization
+- [API Reference](reference/api.md) - API documentation
+- [Testing Guide](reference/testing.md) - Testing guidelines
 
-## Progress Tracking
-- [Strategy Checklist](strategy-checklist.md)
-- [Test Progress](test-progress.md) 
+## Development
+- [Strategy Checklist](strategy/implementation/checklist.md) - Implementation progress
+- [Test Progress](test-progress.md) - Test coverage and status 
