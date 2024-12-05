@@ -1,8 +1,18 @@
 """Test media sync with absolute vault paths"""
 
+import os
 import pytest
 from pathlib import Path
+from dotenv import load_dotenv
 from sync_engine.handlers.media import MediaHandler
+
+# Load environment variables
+load_dotenv()
+
+# Get paths from environment
+VAULT_ROOT = Path(os.getenv('VAULT_ROOT'))
+JEKYLL_ASSETS_PATH = VAULT_ROOT / os.getenv('JEKYLL_ASSETS_PATH')
+TEST_VAULT_IMAGE = os.getenv('TEST_VAULT_IMAGE')
 
 def test_absolute_path_resolution(tmp_path):
     """Test that absolute vault paths are resolved correctly"""
@@ -103,3 +113,27 @@ def test_bidirectional_sync(tmp_path):
     synced_path = handler.sync_back_to_obsidian(jekyll_url)
     assert synced_path == test_image
     assert test_image.read_bytes() == b"modified data" 
+
+def test_real_vault_paths():
+    """Integration test using real vault data"""
+    handler = MediaHandler(VAULT_ROOT, JEKYLL_ASSETS_PATH)
+    
+    # Test with known image from vault
+    ref = TEST_VAULT_IMAGE
+    resolved = handler.resolve_media_path(ref)
+    assert resolved is not None
+    assert resolved.exists()
+    assert resolved.name == Path(TEST_VAULT_IMAGE).name
+    
+    # Test frontmatter extraction
+    frontmatter = {'image': f'[[{TEST_VAULT_IMAGE}]]'}
+    ref = frontmatter['image'].strip('[]')
+    resolved = handler.resolve_media_path(ref)
+    assert resolved is not None
+    assert resolved.exists()
+    
+    # Test Jekyll path generation
+    jekyll_path = handler.get_jekyll_media_path(resolved)
+    assert jekyll_path.parent == JEKYLL_ASSETS_PATH
+    assert Path(TEST_VAULT_IMAGE).stem.lower().replace(' ', '-') in jekyll_path.name.lower()
+    assert jekyll_path.suffix.lower() == ".png" 
