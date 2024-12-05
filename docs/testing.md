@@ -6,19 +6,21 @@
 - Using pytest with tmp_path fixture for isolation
 - Real vault integration tests using actual paths from `.env`
 - Mock data follows actual vault patterns
+- Package installed in development mode with `pip install -e .`
 
 ### Test Cases & Results
 
 #### 1. Absolute Path Resolution
 - **Mock Test**: `test_absolute_path_resolution`
-  - [ ] Resolves absolute vault paths
-  - [ ] Handles non-existent files gracefully
-  - [ ] Preserves case sensitivity
+  - [x] Resolves absolute vault paths
+  - [x] Handles non-existent files gracefully
+  - [x] Preserves case sensitivity
   - Expected patterns:
     ```python
     # Input: atomics/2024/12/03/image.png
     # Expected: /full/path/to/vault/atomics/2024/12/03/image.png
     ```
+  - Status: ✅ PASSED
 
 #### 2. Frontmatter Image Handling
 - **Mock Test**: `test_image_frontmatter_handling`
@@ -65,11 +67,26 @@
     ```
 
 ### Common Issues & Solutions
-1. Path Resolution
-   - Issue: ...
-   - Solution: ...
+1. Package Import Error
+   - Issue: `ModuleNotFoundError: No module named 'sync_engine'`
+   - Solution: 
+     1. Create `pyproject.toml` with correct package structure
+     2. Add `pythonpath = ["scripts"]` to pytest config
+     3. Install package in dev mode with `pip install -e .`
+     4. Ensure `__init__.py` exists in all package directories
 
-2. File Handling
+2. Build System Error
+   - Issue: `ERROR: neither 'setup.py' nor 'pyproject.toml' found`
+   - Solution:
+     1. Create `pyproject.toml` with build system config:
+        ```toml
+        [build-system]
+        requires = ["hatchling"]
+        build-backend = "hatchling.build"
+        ```
+     2. Install build dependency: `pip install hatchling`
+
+3. File Handling
    - Issue: ...
    - Solution: ...
 
