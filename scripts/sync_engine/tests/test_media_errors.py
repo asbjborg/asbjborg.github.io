@@ -6,6 +6,7 @@ from pathlib import Path
 from PIL import Image
 from dotenv import load_dotenv
 from sync_engine.handlers.media import MediaHandler
+from sync_engine.core.exceptions import InvalidImageError, UnsupportedFormatError, ImageProcessingError
 
 # Load environment variables
 load_dotenv()
@@ -46,7 +47,7 @@ def test_corrupted_image(tmp_path, bad_images):
     handler = MediaHandler(tmp_path, tmp_path / "assets")
     
     # Should handle corrupted file gracefully
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(InvalidImageError) as exc_info:
         handler.process_image(bad_images['corrupt'], tmp_path / "out.jpg")
     assert "corrupted" in str(exc_info.value).lower() or "invalid" in str(exc_info.value).lower()
 
@@ -55,18 +56,18 @@ def test_empty_file(tmp_path, bad_images):
     handler = MediaHandler(tmp_path, tmp_path / "assets")
     
     # Should handle empty file gracefully
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(InvalidImageError) as exc_info:
         handler.process_image(bad_images['empty'], tmp_path / "out.png")
-    assert "empty" in str(exc_info.value).lower() or "invalid" in str(exc_info.value).lower()
+    assert "empty" in str(exc_info.value).lower()
 
 def test_wrong_extension(tmp_path, bad_images):
     """Test handling of files with incorrect extensions"""
     handler = MediaHandler(tmp_path, tmp_path / "assets")
     
     # Should detect incorrect file type
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(InvalidImageError) as exc_info:
         handler.process_image(bad_images['wrong_ext'], tmp_path / "out.png")
-    assert "invalid" in str(exc_info.value).lower() or "not an image" in str(exc_info.value).lower()
+    assert "invalid" in str(exc_info.value).lower() or "corrupted" in str(exc_info.value).lower()
 
 def test_permission_error(tmp_path, bad_images):
     """Test handling of permission errors"""
@@ -78,7 +79,7 @@ def test_permission_error(tmp_path, bad_images):
     os.chmod(output_dir, 0o444)  # Read-only
     
     # Should handle permission error gracefully
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(ImageProcessingError) as exc_info:
         handler.process_image(bad_images['tiny'], output_dir / "out.png")
     assert "permission" in str(exc_info.value).lower()
     
@@ -102,6 +103,6 @@ def test_unsupported_format(tmp_path, bad_images):
     unsupported.write_bytes(b"Not a real image format")
     
     # Should reject unsupported format
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(UnsupportedFormatError) as exc_info:
         handler.process_image(unsupported, tmp_path / "out.xyz")
-    assert "unsupported" in str(exc_info.value).lower() or "unknown" in str(exc_info.value).lower() 
+    assert "unsupported" in str(exc_info.value).lower()

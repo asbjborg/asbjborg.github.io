@@ -9,12 +9,16 @@ import logging
 import hashlib
 from pathlib import Path
 from typing import Optional, Set, Dict, List
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+from ..core.exceptions import InvalidImageError, UnsupportedFormatError, ImageProcessingError
 
 logger = logging.getLogger(__name__)
 
 class MediaHandler:
     """Handles media file processing and synchronization"""
+    
+    # Supported image formats
+    SUPPORTED_FORMATS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
     
     def __init__(self, vault_root: Path, assets_path: Path):
         """
@@ -36,6 +40,24 @@ class MediaHandler:
         # Supported image formats
         self.image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
     
+    def validate_image(self, image_path: Path) -> None:
+        """Validate image file before processing"""
+        if not image_path.exists():
+            raise FileNotFoundError(f"Image not found: {image_path}")
+            
+        if image_path.suffix.lower() not in self.SUPPORTED_FORMATS:
+            raise UnsupportedFormatError(f"Unsupported image format: {image_path.suffix}")
+            
+        if image_path.stat().st_size == 0:
+            raise InvalidImageError(f"Empty image file: {image_path}")
+            
+        try:
+            # Try to open and verify it's a valid image
+            with Image.open(image_path) as img:
+                img.verify()
+        except (UnidentifiedImageError, OSError) as e:
+            raise InvalidImageError(f"Invalid or corrupted image: {image_path}") from e
+    
     def process_image(self, image_path: Path, target_path: Path) -> Optional[Path]:
         """
         Process and optimize image for web
@@ -48,14 +70,19 @@ class MediaHandler:
             Path to processed image or None if failed
         """
         try:
+            # Validate image first
+            self.validate_image(image_path)
+            
             with Image.open(image_path) as img:
-                # Convert RGBA to RGB if needed
+                # Convert to RGB if needed
                 if img.mode in ('RGBA', 'LA'):
                     background = Image.new('RGB', img.size, (255, 255, 255))
                     background.paste(img, mask=img.split()[-1])
                     img = background
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
                 
-                # Resize if too large (max 1200px width)
+                # Resize if too large
                 max_width = 1200
                 if img.width > max_width:
                     ratio = max_width / img.width
@@ -63,6 +90,7 @@ class MediaHandler:
                     img = img.resize(new_size, Image.Resampling.LANCZOS)
                 
                 # Save with optimization
+                target_path.parent.mkdir(parents=True, exist_ok=True)
                 if target_path.suffix.lower() in {'.jpg', '.jpeg'}:
                     img.save(target_path, 'JPEG', quality=85, optimize=True)
                 elif target_path.suffix.lower() == '.png':
@@ -75,11 +103,12 @@ class MediaHandler:
                 logger.info(f"Processed and optimized image: {target_path}")
                 return target_path
                 
+        except (InvalidImageError, UnsupportedFormatError) as e:
+            logger.error(str(e))
+            raise
         except Exception as e:
             logger.error(f"Error processing image {image_path}: {e}")
-            # Fall back to copying original
-            shutil.copy2(image_path, target_path)
-            return target_path
+            raise ImageProcessingError(f"Failed to process image: {e}") from e
     
     def get_media_references(self, content: str) -> Set[str]:
         """
