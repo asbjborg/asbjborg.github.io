@@ -23,32 +23,32 @@ class SyncEngineV2:
         self,
         vault_root: Path,
         jekyll_root: Path,
-        vault_posts: str = "_posts",
-        vault_media: str = "atomics",
+        vault_atomics: str = "atomics",
         jekyll_posts: str = "_posts",
         jekyll_assets: str = "assets/img/posts"
     ):
         """Initialize sync engine"""
-        self.vault_root = Path(vault_root).resolve()
-        self.jekyll_root = Path(jekyll_root).resolve()
-        self.vault_posts = vault_posts
-        self.vault_media = vault_media
-        self.jekyll_posts = jekyll_posts
-        self.jekyll_assets = jekyll_assets
+        self.config = ConfigManager.load_from_dict({
+            "vault_path": vault_root,
+            "jekyll_path": jekyll_root,
+            "vault_atomics": vault_atomics,
+            "jekyll_posts": jekyll_posts,
+            "jekyll_assets": jekyll_assets
+        })
         
         # Initialize handlers
         self.post_handler = PostHandler()
         self.media_handler = MediaHandler(
-            vault_path=self.vault_root,
-            jekyll_assets=self.jekyll_root / self.jekyll_assets
+            vault_path=self.config.vault_path,
+            jekyll_assets=self.config.jekyll_assets_path
         )
         
         # Initialize change detector
         self.change_detector = ChangeDetector(
-            vault_path=self.vault_root,
-            jekyll_path=self.jekyll_root,
-            posts_path=self.vault_root / self.vault_posts,
-            jekyll_posts=self.jekyll_root / self.jekyll_posts
+            vault_path=self.config.vault_path,
+            jekyll_path=self.config.jekyll_path,
+            atomics_path=self.config.atomics_path,
+            jekyll_posts=self.config.jekyll_posts_path
         )
     
     def detect_changes(self) -> List[SyncState]:
@@ -98,111 +98,6 @@ class SyncEngineV2:
             
         except Exception as e:
             logger.error(f"Error during sync: {e}")
-            raise
-    
-    def _sync_obsidian_to_jekyll(self) -> List[SyncState]:
-        """Sync changes from Obsidian to Jekyll"""
-        changes = []
-        try:
-            # Get changes
-            detected = self.detect_changes()
-            
-            # Process each change
-            for change in detected:
-                if change.sync_direction == SyncDirection.OBSIDIAN_TO_JEKYLL:
-                    # Skip private posts
-                    if change.status == PostStatus.PRIVATE:
-                        continue
-                        
-                    if change.operation == SyncOperation.DELETE:
-                        # Delete from Jekyll
-                        if change.target_path:
-                            with AtomicOperation.atomic_delete(change.target_path) as backup_path:
-                                changes.append(change)
-                    else:
-                        # Create or update in Jekyll
-                        changes.extend(self.sync_ops.sync_to_jekyll(
-                            change.source_path,
-                            change.status or PostStatus.PUBLISHED
-                        ))
-            
-            return changes
-            
-        except Exception as e:
-            logger.error(f"Error during Obsidian to Jekyll sync: {e}")
-            raise
-    
-    def _sync_jekyll_to_obsidian(self) -> List[SyncState]:
-        """Sync changes from Jekyll to Obsidian"""
-        changes = []
-        try:
-            # Get changes
-            detected = self.detect_changes()
-            
-            # Process each change
-            for change in detected:
-                if change.sync_direction == SyncDirection.JEKYLL_TO_OBSIDIAN:
-                    if change.operation == SyncOperation.DELETE:
-                        # Delete from Obsidian
-                        if change.target_path:
-                            with AtomicOperation.atomic_delete(change.target_path) as backup_path:
-                                changes.append(change)
-                    else:
-                        # Create or update in Obsidian
-                        changes.extend(self.sync_ops.sync_to_obsidian(change.source_path))
-            
-            return changes
-            
-        except Exception as e:
-            logger.error(f"Error during Jekyll to Obsidian sync: {e}")
-            raise
-    
-    def _sync_bidirectional(self) -> List[SyncState]:
-        """Perform bidirectional sync with conflict resolution"""
-        changes = []
-        try:
-            # Get all changes
-            detected = self.detect_changes()
-            
-            # Group changes by file name
-            changes_by_file = {}
-            for change in detected:
-                file_name = change.source_path.name
-                if file_name not in changes_by_file:
-                    changes_by_file[file_name] = []
-                changes_by_file[file_name].append(change)
-            
-            # Process each file's changes
-            for file_name, file_changes in changes_by_file.items():
-                if len(file_changes) == 1:
-                    # Single change, just apply it
-                    change = file_changes[0]
-                    if change.sync_direction == SyncDirection.OBSIDIAN_TO_JEKYLL:
-                        changes.extend(self._sync_obsidian_to_jekyll())
-                    else:
-                        changes.extend(self._sync_jekyll_to_obsidian())
-                else:
-                    # Multiple changes, resolve conflict
-                    obsidian_change = next(
-                        (c for c in file_changes if c.sync_direction == SyncDirection.OBSIDIAN_TO_JEKYLL),
-                        None
-                    )
-                    jekyll_change = next(
-                        (c for c in file_changes if c.sync_direction == SyncDirection.JEKYLL_TO_OBSIDIAN),
-                        None
-                    )
-                    
-                    if obsidian_change and jekyll_change:
-                        # Both sides changed, use newer version
-                        if obsidian_change.last_modified > jekyll_change.last_modified:
-                            changes.extend(self._sync_obsidian_to_jekyll())
-                        else:
-                            changes.extend(self._sync_jekyll_to_obsidian())
-            
-            return changes
-            
-        except Exception as e:
-            logger.error(f"Error during bidirectional sync: {e}")
             raise
     
     def _sync_post(self, state: SyncState) -> None:

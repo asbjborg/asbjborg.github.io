@@ -1,10 +1,10 @@
-"""File change detection module"""
+"""Change detection module"""
 
 import logging
-import frontmatter
 from pathlib import Path
-from typing import Dict, List, Set
-import datetime
+from typing import Dict, List
+from datetime import datetime
+import frontmatter
 
 from .types import SyncState, SyncOperation, SyncDirection, PostStatus
 from ..handlers.post import PostHandler
@@ -15,13 +15,14 @@ class ChangeDetector:
     """Handles all change detection logic"""
     
     def __init__(self, config: Dict):
+        """Initialize change detector"""
         self.config = config
-        self.vault_path = Path(config['vault_root'])
-        self.jekyll_path = Path(config['jekyll_root'])
-        self.atomics_root = self.vault_path / 'atomics'
+        self.vault_path = Path(config['vault_path'])
+        self.jekyll_path = Path(config['jekyll_path'])
+        self.atomics_path = self.vault_path / config['vault_atomics']
         self.jekyll_posts = self.jekyll_path / config.get('jekyll_posts', '_posts')
         self.post_handler = PostHandler()
-        
+    
     def detect(self) -> List[SyncState]:
         """Detect changes between Obsidian and Jekyll"""
         obsidian_states = self._get_obsidian_states()
@@ -29,15 +30,15 @@ class ChangeDetector:
         return self._compare_states(obsidian_states, jekyll_states)
     
     def _get_obsidian_states(self) -> Dict[str, SyncState]:
-        """Get current state of Obsidian posts"""
+        """Get current state of Obsidian atomic notes"""
         states = {}
         
         # Recursively scan all markdown files in atomics
-        for post_path in self.atomics_root.rglob('*.md'):
+        for post_path in self.atomics_path.rglob('*.md'):
             try:
                 # Check if it's in a date folder (YYYY/MM/DD)
                 try:
-                    date_parts = list(post_path.relative_to(self.atomics_root).parts)[:3]
+                    date_parts = list(post_path.relative_to(self.atomics_path).parts)[:3]
                     if len(date_parts) < 3:
                         continue  # Not in a date folder
                     # Validate date format
@@ -45,7 +46,7 @@ class ChangeDetector:
                 except (ValueError, IndexError):
                     continue  # Not a valid date path
                 
-                # Check if it's a post
+                # Check if it's a post (has status in frontmatter)
                 post = frontmatter.load(str(post_path))
                 status = self.post_handler.get_post_status(post)
                 if status is None:  # Not a post
@@ -61,12 +62,13 @@ class ChangeDetector:
                     target_path=target_path,
                     status=status,
                     sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL,
-                    modified=self._get_modified_time(post, post_path)
+                    last_modified=self._get_modified_time(post, post_path)
                 )
                 
             except Exception as e:
                 logger.error(f"Error reading file {post_path}: {e}")
                 continue
+        
         return states
     
     def _get_jekyll_states(self) -> Dict[str, SyncState]:
@@ -90,69 +92,45 @@ class ChangeDetector:
                     status = self.post_handler.get_post_status(post)
                     if status != PostStatus.PRIVATE:
                         # Create proper atomics path with date structure
-                        target_path = self.atomics_root / date_path / post_path.stem.split('-', 3)[3].strip() + '.md'
+                        target_path = self.atomics_path / date_path / post_path.stem.split('-', 3)[3].strip() + '.md'
                         states[post_path.name] = SyncState(
                             operation=SyncOperation.NONE,
                             source_path=post_path,
                             target_path=target_path,
                             status=status,
                             sync_direction=SyncDirection.JEKYLL_TO_OBSIDIAN,
-                            modified=self._get_modified_time(post, post_path)
+                            last_modified=self._get_modified_time(post, post_path)
                         )
                 except Exception as e:
                     logger.error(f"Error reading Jekyll post {post_path}: {e}")
                     continue
+        
         return states
     
-    def _compare_states(self, obsidian_states: Dict[str, SyncState], 
-                       jekyll_states: Dict[str, SyncState]) -> List[SyncState]:
-        """Compare states and detect changes"""
+    def _compare_states(self, obsidian_states: Dict[str, SyncState], jekyll_states: Dict[str, SyncState]) -> List[SyncState]:
+        """Compare states and determine required operations"""
         changes = []
-        all_posts = set(obsidian_states) | set(jekyll_states)
         
-        for post_name in all_posts:
-            obsidian_state = obsidian_states.get(post_name)
-            jekyll_state = jekyll_states.get(post_name)
-            
-            if obsidian_state and jekyll_state:
-                # Post exists in both - check for modifications
-                if obsidian_state.modified > jekyll_state.modified:
-                    changes.append(SyncState(
-                        operation=SyncOperation.UPDATE,
-                        source_path=obsidian_state.source_path,
-                        target_path=obsidian_state.target_path,
-                        status=obsidian_state.status,
-                        sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL
-                    ))
-                elif jekyll_state.modified > obsidian_state.modified:
-                    # ✅ When syncing from Jekyll, use existing Obsidian path
-                    changes.append(SyncState(
-                        operation=SyncOperation.UPDATE,
-                        source_path=jekyll_state.source_path,
-                        target_path=obsidian_state.target_path,  # Keep original path
-                        status=jekyll_state.status,
-                        sync_direction=SyncDirection.JEKYLL_TO_OBSIDIAN
-                    ))
-            
-            elif obsidian_state:
-                # Only in Obsidian - new post
-                changes.append(SyncState(
-                    operation=SyncOperation.CREATE,
-                    source_path=obsidian_state.source_path,
-                    target_path=obsidian_state.target_path,
-                    status=obsidian_state.status,
-                    sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL
-                ))
-            
-            elif jekyll_state and jekyll_state.source_path.exists():
-                # Only in Jekyll - create in proper date folder
-                changes.append(SyncState(
-                    operation=SyncOperation.CREATE,
-                    source_path=jekyll_state.source_path,
-                    target_path=jekyll_state.target_path,
-                    status=jekyll_state.status,
-                    sync_direction=SyncDirection.JEKYLL_TO_OBSIDIAN
-                ))
+        # Check Obsidian -> Jekyll changes
+        for name, obsidian_state in obsidian_states.items():
+            if name not in jekyll_states:
+                # New post in Obsidian
+                obsidian_state.operation = SyncOperation.CREATE
+                changes.append(obsidian_state)
+            else:
+                # Post exists in both, check for updates
+                jekyll_state = jekyll_states[name]
+                if obsidian_state.last_modified > jekyll_state.last_modified:
+                    obsidian_state.operation = SyncOperation.UPDATE
+                    changes.append(obsidian_state)
+        
+        # Check Jekyll -> Obsidian changes
+        for name, jekyll_state in jekyll_states.items():
+            if name not in obsidian_states:
+                # Post deleted from Obsidian
+                jekyll_state.operation = SyncOperation.DELETE
+                changes.append(jekyll_state)
+            # Updates from Jekyll to Obsidian are handled above
         
         return changes
     

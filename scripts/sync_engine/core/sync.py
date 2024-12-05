@@ -1,15 +1,15 @@
 """Core sync orchestration module"""
 
 import logging
-import os
 from pathlib import Path
 from typing import Dict, List, Optional
 import frontmatter
-from dotenv import load_dotenv
 
 from .atomic import AtomicManager
 from .changes import ChangeDetector
 from .types import SyncState, SyncOperation, PostStatus
+from .config import ConfigManager, SyncConfig
+from .exceptions import SyncError
 from ..handlers.post import PostHandler
 from ..handlers.media import MediaHandler
 
@@ -18,194 +18,140 @@ logger = logging.getLogger(__name__)
 class SyncManager:
     """Manages the sync process between Obsidian and Jekyll"""
     
-    DEFAULT_CONFIG = {
-        'jekyll_posts': '_posts',
-        'jekyll_assets': 'assets/img/posts',
-        'atomics_root': 'atomics',
-        'backup_count': 5,
-        'auto_cleanup': True,
-        'max_image_width': 1200,
-        'optimize_images': True
-    }
-    
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict = None):
         """
-        Initialize sync manager with configuration
+        Initialize sync manager
         
         Args:
-            config: Configuration dictionary with required paths and optional settings
-            
-        Required config:
-            - vault_root: Path to Obsidian vault
-            - jekyll_root: Path to Jekyll site
-            
-        Optional config:
-            - jekyll_posts: Jekyll posts directory (default: '_posts')
-            - jekyll_assets: Jekyll assets directory (default: 'assets/img/posts')
-            - atomics_root: Obsidian atomics directory (default: 'atomics')
-            - backup_count: Number of backups to keep (default: 5)
-            - auto_cleanup: Whether to auto-cleanup unused files (default: True)
-        
-        Raises:
-            ValueError: If required config is missing or invalid
+            config: Optional configuration dictionary. If not provided, loads from environment.
         """
-        # Load .env if exists
-        if Path('.env').exists():
-            load_dotenv()
+        try:
+            # Load configuration
+            self.config = (
+                ConfigManager.load_from_dict(config)
+                if config is not None
+                else ConfigManager.load_from_env()
+            )
             
-        # Check env vars if config not provided
-        if not config.get('vault_root'):
-            config['vault_root'] = os.getenv('VAULT_ROOT')
-        if not config.get('jekyll_root'):
-            config['jekyll_root'] = os.getenv('JEKYLL_ROOT')
+            # Initialize components
+            self.atomic = AtomicManager()
+            self.changes = ChangeDetector(self.config)
+            self.post_handler = PostHandler()
+            self.media_handler = MediaHandler(
+                self.config.vault_path,
+                self.config.jekyll_assets_path
+            )
             
-        # Validate required config
-        if not config.get('vault_root') or not config.get('jekyll_root'):
-            raise ValueError("Missing required config: vault_root and jekyll_root are required")
+            logger.info("SyncManager initialized successfully")
+            logger.debug(f"Using configuration: {self.config}")
             
-        # Convert paths to Path objects and validate
-        self.vault_path = Path(config['vault_root'])
-        self.jekyll_path = Path(config['jekyll_root'])
-        
-        if not self.vault_path.exists():
-            raise ValueError(f"Vault path does not exist: {self.vault_path}")
-        if not self.jekyll_path.exists():
-            raise ValueError(f"Jekyll path does not exist: {self.jekyll_path}")
-            
-        # Merge with defaults
-        self.config = {**self.DEFAULT_CONFIG, **config}
-        
-        # Initialize paths
-        self.atomics_root = self.vault_path / self.config['atomics_root']
-        self.jekyll_posts = self.jekyll_path / self.config['jekyll_posts']
-        
-        # Initialize components with validated config
-        self.atomic = AtomicManager()
-        if self.config.get('backup_count'):
-            self.atomic._cleanup_old_backups.keep = self.config['backup_count']
-            
-        self.changes = ChangeDetector(self.config)
-        self.post_handler = PostHandler()
-        self.media_handler = MediaHandler(
-            self.vault_path,
-            self.jekyll_path / self.config['jekyll_assets']
-        )
-        
-        # Configure logging
-        logging.basicConfig(
-            level=logging.INFO if not config.get('debug') else logging.DEBUG,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-    
-    def _apply_dev_settings(self, dev_settings: Dict):
-        """Apply development environment settings"""
-        # Override defaults with dev settings
-        self.DEFAULT_CONFIG.update(dev_settings)
-    
-    def validate_config(self) -> bool:
-        """
-        Validate current configuration
-        
-        Returns:
-            bool: True if config is valid
-            
-        Raises:
-            ValueError: If config is invalid
-        """
-        # Check required directories
-        required_dirs = [
-            (self.jekyll_posts, "Jekyll posts directory"),
-            (self.jekyll_path / self.config['jekyll_assets'], "Jekyll assets directory"),
-            (self.atomics_root, "Obsidian atomics directory")
-        ]
-        
-        for path, name in required_dirs:
-            if not path.exists():
-                raise ValueError(f"{name} does not exist: {path}")
-                
-        # Validate numeric settings
-        if not isinstance(self.config.get('backup_count', 5), int):
-            raise ValueError("backup_count must be an integer")
-            
-        # Validate boolean settings
-        if not isinstance(self.config.get('auto_cleanup', True), bool):
-            raise ValueError("auto_cleanup must be a boolean")
-            
-        return True
+        except Exception as e:
+            logger.error(f"Failed to initialize SyncManager: {e}")
+            raise SyncError(f"Initialization failed: {e}") from e
     
     def sync(self) -> List[SyncState]:
         """
-        Perform full sync between Obsidian and Jekyll
+        Sync files between Obsidian and Jekyll
         
         Returns:
-            List of sync states representing changes made
+            List[SyncState]: List of changes that were synced
+        
+        Raises:
+            SyncError: If sync fails
         """
         try:
-            # Detect changes
+            logger.info("Starting sync operation")
+            
+            # Get changes
             changes = self.changes.detect()
-            if not changes:
-                logger.info("No changes detected")
-                return []
-                
-            # Process changes atomically
-            with self.atomic.batch() as batch:
-                for change in changes:
-                    # Add the sync operation
-                    batch.add(change)
+            logger.info(f"Detected {len(changes)} changes")
+            
+            # Process each change
+            processed_changes = []
+            for state in changes:
+                try:
+                    logger.debug(f"Processing change: {state}")
                     
-                    # Process any media references
-                    if change.operation != SyncOperation.DELETE:
-                        media_changes = self._process_media(change)
-                        for media_change in media_changes:
-                            batch.add(media_change)
+                    # Process media references first
+                    if state.operation != SyncOperation.DELETE:
+                        self.media_handler.process_references(state.source_path)
+                    
+                    # Sync post
+                    self._sync_post(state)
+                    processed_changes.append(state)
+                    
+                    # Mark as synced
+                    if state.operation != SyncOperation.DELETE:
+                        self._mark_synced(state)
+                        
+                    logger.debug(f"Successfully processed change: {state}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to process change {state}: {e}")
+                    if not self.config.continue_on_error:
+                        raise
             
-            logger.info(f"Synced {len(changes)} changes")
-            return changes
+            # Run cleanup if enabled
+            if self.config.auto_cleanup:
+                self.cleanup()
             
-        except Exception as e:
-            logger.error(f"Sync failed: {e}")
-            raise
-    
-    def _process_media(self, change: SyncState) -> List[SyncState]:
-        """Process media files referenced in a post"""
-        try:
-            # Load post content
-            post = frontmatter.load(str(change.source_path))
-            
-            # Extract media references
-            media_refs = self.media_handler.get_media_references(str(post))
-            media_changes = []
-            
-            # Process each reference
-            for ref in media_refs:
-                media_path = self.vault_path / ref
-                if media_path.exists():
-                    # Process media file
-                    target_path = self.media_handler.process_media_file(media_path)
-                    if target_path:
-                        media_changes.append(SyncState(
-                            operation=SyncOperation.CREATE,
-                            source_path=media_path,
-                            target_path=self.jekyll_path / target_path.lstrip('/'),
-                            status=change.status,
-                            sync_direction=change.sync_direction
-                        ))
-            
-            return media_changes
+            logger.info(f"Sync completed successfully. Processed {len(processed_changes)} changes")
+            return processed_changes
             
         except Exception as e:
-            logger.error(f"Error processing media for {change.source_path}: {e}")
-            return []
+            logger.error(f"Sync operation failed: {e}")
+            raise SyncError(f"Sync failed: {e}") from e
     
-    def cleanup(self):
-        """Cleanup unused media files and old backups"""
+    def cleanup(self) -> None:
+        """Clean up unused files and old backups"""
         try:
-            # Cleanup media
+            logger.info("Starting cleanup")
+            
+            # Clean up old backups
+            self.atomic.cleanup_backups(keep=self.config.backup_count)
+            
+            # Clean up unused media
             self.media_handler.cleanup_unused()
             
-            # Cleanup old backups
-            self.atomic._cleanup_old_backups()
+            logger.info("Cleanup completed successfully")
             
         except Exception as e:
             logger.error(f"Cleanup failed: {e}")
-            raise
+            raise SyncError(f"Cleanup failed: {e}") from e
+    
+    def _sync_post(self, state: SyncState) -> None:
+        """Sync a single post"""
+        try:
+            if state.operation == SyncOperation.DELETE:
+                if state.target_path.exists():
+                    state.target_path.unlink()
+            else:
+                # Process post
+                content = self.post_handler.process(
+                    state.source_path,
+                    state.target_path
+                )
+                
+                # Write with atomic operation
+                self.atomic.write(
+                    state.target_path,
+                    content,
+                    make_backup=True
+                )
+                
+        except Exception as e:
+            logger.error(f"Failed to sync post {state.source_path}: {e}")
+            raise SyncError(f"Post sync failed: {e}") from e
+    
+    def _mark_synced(self, state: SyncState) -> None:
+        """Mark files as synced in frontmatter"""
+        try:
+            for path in [state.source_path, state.target_path]:
+                if path.exists():
+                    post = frontmatter.load(str(path))
+                    post.metadata['synced'] = True
+                    frontmatter.dump(post, str(path))
+                    
+        except Exception as e:
+            logger.error(f"Failed to mark sync status: {e}")
+            raise SyncError(f"Failed to mark sync status: {e}") from e
