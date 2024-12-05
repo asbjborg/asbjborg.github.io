@@ -1,13 +1,14 @@
-# sync strategy and setup
+# Sync Strategy
 
-## setup
+> **Implementation Status**: Track progress in [Implementation Checklist](implementation/checklist.md)
 
-### obsidian
+## Overview
+The sync engine manages bidirectional synchronization between an Obsidian vault and a Jekyll blog. All content lives in atomic notes, organized by date. Blog posts are just notes with `status: "published"`.
 
-All files (posts, personal notes, images) are atomic notes in your vault, organized by date. Blog posts are just notes with `status: "published"`.
+## File Structure
 
-#### folder structure in obsidian
-
+### Obsidian Structure
+```
 /PKM
     /atomics                    # All atomic notes
         /2024
@@ -23,9 +24,9 @@ All files (posts, personal notes, images) are atomic notes in your vault, organi
                     /image-1.png                   # Image used in post
                     /image-2.png                   # Image used in note
                     /some.pdf                      # Other file
+```
 
-#### frontmatter in obsidian
-
+### Obsidian Frontmatter
 ```yaml
 ---
 title: My First Post
@@ -41,10 +42,8 @@ status: "published"  # Makes this note a blog post
 Here's an image: ![[atomics/2024/12/03/Pasted image 20241203214844.png]]
 ```
 
-### jekyll
-
-#### folder structure in jekyll
-
+### Jekyll Structure
+```
 /root
     /_posts
         2024-12-03-my-first-post.md
@@ -54,9 +53,9 @@ Here's an image: ![[atomics/2024/12/03/Pasted image 20241203214844.png]]
             /posts
                 pasted-image-20241203214844.png
                 image-1.png
+```
 
-#### frontmatter in jekyll
-
+### Jekyll Frontmatter
 ```yaml
 ---
 title: 'My First Post'
@@ -70,10 +69,9 @@ image: /assets/img/posts/pasted-image-20241203214844.png
 Here's an image: ![Pasted image](/assets/img/posts/pasted-image-20241203214844.png)
 ```
 
-## sync engine
+## Sync Process
 
-### posts
-
+### Post Detection & Processing
 1. Recursively scan Obsidian's `/atomics` folder
 2. For each markdown file:
    - Check for `status` frontmatter
@@ -95,8 +93,7 @@ Here's an image: ![Pasted image](/assets/img/posts/pasted-image-20241203214844.p
      1. `status: "published"`
      2. OR `status: "draft"` (working on revision)
 
-### assets
-
+### Media Handling
 1. For each published post:
    - Find image references in content and frontmatter
    - Convert absolute vault paths (`[[atomics/2024/12/03/image.png]]`) to Jekyll paths
@@ -112,8 +109,7 @@ Here's an image: ![Pasted image](/assets/img/posts/pasted-image-20241203214844.p
      2. OR in draft (potential revisions)
    - Remove all other assets from Jekyll
 
-### bidirectional sync
-
+### Bidirectional Sync
 The sync engine handles changes from both sides:
 
 1. **Jekyll → Obsidian**
@@ -125,7 +121,6 @@ The sync engine handles changes from both sides:
 2. **Obsidian → Jekyll**
    - If Obsidian post is newer: update content and Jekyll frontmatter
    - Only sync needed Jekyll properties:
-
      ```yaml
      title: from Obsidian
      tags: from Obsidian
@@ -148,31 +143,32 @@ The sync engine handles changes from both sides:
    - Keep Jekyll paths in Jekyll
    - Keep absolute vault paths in Obsidian
 
-### filenames
-
+### Filename Handling
 The sync engine handles different naming conventions:
 
 Obsidian:
-
 - Post: `/PKM/atomics/2024/12/03/my first post.md`  (spaces allowed, date from path)
 - Image: `/PKM/atomics/2024/12/03/Pasted image 20241203214844.png`  (spaces allowed)
 - Links: `[[atomics/2024/12/03/Pasted image 20241203214844.png]]`  (absolute vault path)
 
 Jekyll:
-
 - Post: `/root/_posts/2024-12-03-my-first-post.md`  (date prefix, dashes)
 - Image: `/root/assets/img/posts/pasted-image-20241203214844.png`  (dashes)
 - Links: `/assets/img/posts/pasted-image-20241203214844.png`  (absolute web path)
 
 The sync engine:
-
 - Uses folder structure for dates
 - Keeps original Obsidian filenames
 - Sanitizes names for Jekyll
 - Maintains absolute vault paths in Obsidian
 - Converts to absolute web paths in Jekyll
 
-## sync frequency
-
+## Sync Frequency
 - Run sync automatically through a cron job every 5 minutes on my mac
 - Allow for manual sync from my mac
+
+## See Also
+- [Implementation Checklist](implementation/checklist.md) - Track implementation progress
+- [Core Tasks](implementation/core-tasks.md) - Detailed implementation tasks
+- [File Structure](../reference/file-structure.md) - Detailed file organization
+- [Configuration Guide](../guides/configuration.md) - Configuration options
