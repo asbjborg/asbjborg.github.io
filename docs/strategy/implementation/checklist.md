@@ -1,4 +1,7 @@
-# Sync Strategy Alignment Checklist
+# Implementation Checklist
+
+> **Strategy**: Based on [Sync Strategy](../sync-strategy.md)  
+> **Tasks**: Detailed in [Core Tasks](core-tasks.md)
 
 ## File Structure
 - [x] All content under /atomics/YYYY/MM/DD/
@@ -32,11 +35,11 @@
 - [x] Use file timestamps for conflict resolution
 
 ## Components to Check
-- [ ] Core
-  - [ ] sync.py: Config and initialization
+- [x] Core
+  - [x] sync.py: Config and initialization
   - [x] changes.py: File scanning logic
-  - [ ] atomic.py: File operations
-  - [ ] engine.py: Overall flow
+  - [x] atomic.py: File operations
+  - [x] engine.py: Overall flow
 - [x] Handlers
   - [x] post.py: Post processing
   - [x] media.py: Media handling
@@ -83,3 +86,9 @@
 - [x] Error Handling (error-handling.md)
 - [ ] Usage Guide
 - [ ] Performance Guide
+
+## See Also
+- [Sync Strategy](../sync-strategy.md) - Core strategy document
+- [Core Tasks](core-tasks.md) - Implementation tasks
+- [Change Detection](../../components/change-detection.md) - File scanning implementation
+- [Atomic Operations](../../components/atomic-operations.md) - File operations implementation
