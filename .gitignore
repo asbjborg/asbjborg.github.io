@@ -42,6 +42,8 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+.coverage
+htmlcov/
 
 # Jekyll
 _site/
