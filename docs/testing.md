@@ -24,47 +24,52 @@
 
 #### 2. Frontmatter Image Handling
 - **Mock Test**: `test_image_frontmatter_handling`
-  - [ ] Extracts image paths from frontmatter
-  - [ ] Handles wikilink syntax
-  - [ ] Preserves original paths
+  - [x] Extracts image paths from frontmatter
+  - [x] Handles wikilink syntax
+  - [x] Preserves original paths
   - Expected patterns:
     ```yaml
     image: ![[atomics/2024/12/03/Pasted image 20241203214844.png]]
     ```
+  - Status: ✅ PASSED
 
 #### 3. Path Sanitization
 - **Mock Test**: `test_path_sanitization`
-  - [ ] Handles spaces in filenames
-  - [ ] Preserves directory structure
-  - [ ] Generates valid Jekyll paths
+  - [x] Handles spaces in filenames
+  - [x] Preserves directory structure
+  - [x] Generates valid Jekyll paths
   - Expected patterns:
     ```python
     # Input: atomics/2024/12/03/My Cool Image.png
     # Expected: atomics-2024-12-03-my-cool-image-[hash].png
     ```
+  - Status: ✅ PASSED
 
 #### 4. Bidirectional Sync
 - **Mock Test**: `test_bidirectional_sync`
-  - [ ] Syncs Obsidian → Jekyll
-  - [ ] Syncs Jekyll → Obsidian
-  - [ ] Preserves file integrity
+  - [x] Syncs Obsidian → Jekyll
+  - [x] Syncs Jekyll → Obsidian
+  - [x] Preserves file integrity
   - Expected patterns:
     ```python
     # Original: atomics/2024/12/03/image.png
     # Jekyll: /assets/img/posts/atomics-2024-12-03-image-[hash].png
     # Sync back: Should match original
     ```
+  - Status: ✅ PASSED
 
 #### 5. Real Vault Integration
 - **Integration Test**: `test_real_vault_paths`
-  - [ ] Resolves actual vault paths
-  - [ ] Handles real image files
-  - [ ] Generates correct Jekyll paths
+  - [x] Resolves actual vault paths
+  - [x] Handles real image files
+  - [x] Generates correct Jekyll paths
   - Expected patterns:
     ```python
     # Using actual image from vault
     # atomics/2024/12/03/Pasted image 20241203214844.png
     ```
+  - Status: ✅ PASSED
+  - Note: Test requires correct vault path in .env pointing to actual Obsidian vault
 
 ### Common Issues & Solutions
 1. Package Import Error
@@ -86,9 +91,12 @@
         ```
      2. Install build dependency: `pip install hatchling`
 
-3. File Handling
-   - Issue: ...
-   - Solution: ...
+3. Real Vault Integration
+   - Issue: `Could not resolve media reference: atomics/2024/12/03/Pasted image 20241203214844.png`
+   - Solution:
+     1. Check if image exists: `ls -l $VAULT_ROOT/atomics/2024/12/03/`
+     2. Verify .env VAULT_ROOT points to actual Obsidian vault
+     3. Ensure test image path matches real vault structure
 
 ### Test Coverage Goals
 - [ ] >90% coverage for media handler
