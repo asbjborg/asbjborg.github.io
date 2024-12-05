@@ -103,7 +103,7 @@ class MediaHandler:
                 logger.info(f"Processed and optimized image: {target_path}")
                 return target_path
                 
-        except (InvalidImageError, UnsupportedFormatError) as e:
+        except (InvalidImageError, UnsupportedFormatError, FileNotFoundError) as e:
             logger.error(str(e))
             raise
         except Exception as e:
