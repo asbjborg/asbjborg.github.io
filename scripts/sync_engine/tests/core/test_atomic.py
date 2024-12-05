@@ -1,0 +1,142 @@
+"""Tests for atomic operations"""
+
+import pytest
+from pathlib import Path
+import shutil
+import time
+from sync_engine.core.atomic import AtomicManager, AtomicBatch, AtomicOperation
+from sync_engine.core.types import SyncState, SyncOperation
+from sync_engine.core.config import SyncConfig, ConfigManager
+
+class TestAtomicOperations:
+    """Tests for atomic operations"""
+    
+    def test_atomic_write(self, atomic_manager, test_config):
+        """Test atomic write operation"""
+        source = test_config.vault_root / "test.md"
+        source.write_text("test content")
+        target = test_config.jekyll_root / "_posts/test.md"
+        
+        operation = AtomicOperation(
+            operation_type=SyncOperation.WRITE,
+            source_path=source,
+            target_path=target,
+            state=SyncState.PENDING
+        )
+        
+        atomic_manager.execute_operation(operation)
+        assert target.exists()
+        assert target.read_text() == "test content"
+
+    def test_atomic_copy(self, atomic_manager, test_config):
+        """Test atomic copy operation"""
+        source = test_config.vault_root / "test.png"
+        source.write_bytes(b"test image")
+        target = test_config.jekyll_root / "assets/img/posts/test.png"
+        
+        operation = AtomicOperation(
+            operation_type=SyncOperation.COPY,
+            source_path=source,
+            target_path=target,
+            state=SyncState.PENDING
+        )
+        
+        atomic_manager.execute_operation(operation)
+        assert target.exists()
+        assert target.read_bytes() == b"test image"
+
+    def test_atomic_move(self, atomic_manager, test_config):
+        """Test atomic move operation"""
+        source = test_config.vault_root / "old.md"
+        source.write_text("test content")
+        target = test_config.vault_root / "new.md"
+        
+        operation = AtomicOperation(
+            operation_type=SyncOperation.MOVE,
+            source_path=source,
+            target_path=target,
+            state=SyncState.PENDING
+        )
+        
+        atomic_manager.execute_operation(operation)
+        assert not source.exists()
+        assert target.exists()
+        assert target.read_text() == "test content"
+
+    def test_atomic_delete(self, atomic_manager, test_config):
+        """Test atomic delete operation"""
+        target = test_config.jekyll_root / "_posts/delete_me.md"
+        target.write_text("to be deleted")
+        
+        operation = AtomicOperation(
+            operation_type=SyncOperation.DELETE,
+            source_path=None,
+            target_path=target,
+            state=SyncState.PENDING
+        )
+        
+        atomic_manager.execute_operation(operation)
+        assert not target.exists()
+
+    def test_atomic_batch(self, atomic_manager, test_config):
+        """Test atomic batch operations"""
+        # Create test files
+        post = test_config.vault_root / "test_batch.md"
+        post.write_text("test post")
+        image = test_config.vault_root / "test_batch.png"
+        image.write_bytes(b"test image")
+        
+        # Create batch operations
+        operations = [
+            AtomicOperation(
+                operation_type=SyncOperation.WRITE,
+                source_path=post,
+                target_path=test_config.jekyll_root / "_posts/test_batch.md",
+                state=SyncState.PENDING
+            ),
+            AtomicOperation(
+                operation_type=SyncOperation.COPY,
+                source_path=image,
+                target_path=test_config.jekyll_root / "assets/img/posts/test_batch.png",
+                state=SyncState.PENDING
+            )
+        ]
+        
+        batch = AtomicBatch(operations=operations)
+        atomic_manager.execute_batch(batch)
+        
+        # Verify both operations completed
+        assert (test_config.jekyll_root / "_posts/test_batch.md").exists()
+        assert (test_config.jekyll_root / "assets/img/posts/test_batch.png").exists()
+
+    def test_atomic_rollback(self, atomic_manager, test_config):
+        """Test atomic operation rollback"""
+        # Create test file that will fail
+        source = test_config.vault_root / "test_rollback.md"
+        source.write_text("test content")
+        target = test_config.jekyll_root / "_posts/test_rollback.md"
+        
+        # Create a batch with a failing operation
+        operations = [
+            AtomicOperation(
+                operation_type=SyncOperation.WRITE,
+                source_path=source,
+                target_path=target,
+                state=SyncState.PENDING
+            ),
+            AtomicOperation(
+                operation_type=SyncOperation.WRITE,
+                source_path=Path("nonexistent.md"),  # This will fail
+                target_path=test_config.jekyll_root / "_posts/fail.md",
+                state=SyncState.PENDING
+            )
+        ]
+        
+        batch = AtomicBatch(operations=operations)
+        
+        # Execute batch and verify rollback
+        with pytest.raises(FileNotFoundError):
+            atomic_manager.execute_batch(batch)
+        
+        # First operation should be rolled back
+        assert not target.exists() 

@@ -27,10 +27,13 @@ The blog includes automatic syncing from Obsidian vault to Jekyll posts with the
 The sync functionality requires the following environment variables in `.env`:
 
 ```shell
-VAULT_PATH=/path/to/obsidian/vault
-VAULT_ATOMICS_PATH=atomics
-VAULT_ATTACHMENTS_PATH=attachments
-BLOG_ASSETS_PATH=assets/img/posts
+SYNC_VAULT_ROOT=/path/to/obsidian/vault
+SYNC_JEKYLL_ROOT=/path/to/jekyll/site
+SYNC_DEBUG=false
+SYNC_BACKUP_COUNT=5
+SYNC_AUTO_CLEANUP=true
+SYNC_MAX_IMAGE_WIDTH=1200
+SYNC_OPTIMIZE_IMAGES=true
 ```
 
 ### Automatic Sync

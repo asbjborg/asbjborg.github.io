@@ -3,7 +3,7 @@
 import logging
 import frontmatter
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Union
 
 from ..core.types import PostStatus
 
@@ -34,6 +34,47 @@ class PostHandler:
         except Exception as e:
             logger.error(f"Error getting post status: {e}")
             return PostStatus.PUBLISHED
+    
+    def extract_frontmatter(self, content_or_path: Union[str, Path]) -> Optional[Dict]:
+        """
+        Extract frontmatter from content or file
+        
+        Args:
+            content_or_path: Content string or file path
+            
+        Returns:
+            Dict of frontmatter or None if not found
+        """
+        try:
+            # If it's a Path, read the file
+            if isinstance(content_or_path, Path):
+                with open(content_or_path) as f:
+                    content = f.read()
+            else:
+                content = content_or_path
+                
+            # Parse frontmatter
+            try:
+                # First try with python-frontmatter
+                post = frontmatter.loads(content)
+                return post.metadata if post.metadata else None
+            except:
+                # If that fails, try with PyYAML directly
+                import yaml
+                # Extract YAML between --- markers
+                if content.startswith('---\n'):
+                    end = content.find('\n---\n', 4)
+                    if end != -1:
+                        yaml_str = content[4:end]
+                        try:
+                            return yaml.safe_load(yaml_str)
+                        except:
+                            pass
+                return None
+            
+        except Exception as e:
+            logger.error(f"Error reading file {content_or_path}: {e}")
+            return None
     
     def process_for_jekyll(self, post: frontmatter.Post) -> frontmatter.Post:
         """

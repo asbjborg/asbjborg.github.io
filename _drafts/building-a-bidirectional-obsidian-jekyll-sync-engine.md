@@ -46,7 +46,7 @@ class PostStatus(Enum):
 
 The engine is split into modular components (because who doesn't love a good modular design?):
 
-```
+```chart
 scripts/sync_engine/
 ├── core/
 │   ├── engine.py    # The brains of the operation
@@ -77,6 +77,7 @@ Here's where it gets interesting. The engine doesn't just push changes one way -
 Sometimes both sides change the same file (we've all been there). The engine handles this like a pro mediator:
 
 1. **Smart Detection**
+
    ```python
    # Detect changes using content hashes
    content_differs = obsidian_hash != jekyll_hash
@@ -90,6 +91,7 @@ Sometimes both sides change the same file (we've all been there). The engine han
    - If Obsidian is newer: Update everything in Jekyll
 
 3. **Helpful Diffs**
+
    ```python
    # When conflicts occur, see what changed
    diff = engine.get_content_diff(obsidian_file, jekyll_file)
@@ -101,6 +103,7 @@ Sometimes both sides change the same file (we've all been there). The engine han
 Because nobody likes corrupted files or half-synced posts, we use atomic operations with automatic rollback:
 
 1. **Safe File Writes**
+
    ```python
    # Write files safely with automatic backup
    with atomic.atomic_write(post_path) as f:
@@ -108,6 +111,7 @@ Because nobody likes corrupted files or half-synced posts, we use atomic operati
    ```
 
 2. **Operation Tracking**
+
    ```python
    # Every operation is tracked
    operation = AtomicOperation(
@@ -129,6 +133,7 @@ Because nobody likes corrupted files or half-synced posts, we use atomic operati
 The media handler is where things get really fancy. It's like having a personal assistant for your images and attachments:
 
 1. **Smart Path Resolution**
+
    ```python
    # Your Obsidian link (now with absolute paths!)
    ![[atomics/2024/12/03/my cool image.png]]
@@ -239,6 +244,7 @@ python -m pytest scripts/sync_engine/tests/test_media_sync.py
 ```
 
 The tests cover:
+
 1. **Media Handling**
    - Absolute path resolution
    - Frontmatter image handling
@@ -287,6 +293,7 @@ def detect_changes(self) -> List[SyncState]:
 ```
 
 This new system is like having a security camera that can spot:
+
 - New posts popping up (like mushrooms after rain)
 - Deleted posts (gone, but not forgotten)
 - Modified posts (sneaky little changes)

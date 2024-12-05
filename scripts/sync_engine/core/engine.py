@@ -2,13 +2,13 @@
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 import time
 
 import frontmatter
 
 from .types import SyncState, SyncOperation, SyncDirection, PostStatus
-from .config import ConfigManager, SyncConfig
+from .config import SyncConfig
 from .changes import ChangeDetector
 from .atomic import AtomicOperation
 from ..handlers.media import MediaHandler
@@ -17,43 +17,31 @@ from ..handlers.post import PostHandler
 logger = logging.getLogger(__name__)
 
 class SyncEngineV2:
-    """V2 of the sync engine with improved architecture and features"""
+    """Sync engine for bidirectional sync between Obsidian and Jekyll"""
     
-    def __init__(
-        self,
-        vault_root: Path,
-        jekyll_root: Path,
-        vault_atomics: str = "atomics",
-        jekyll_posts: str = "_posts",
-        jekyll_assets: str = "assets/img/posts"
-    ):
-        """Initialize sync engine"""
-        self.config = ConfigManager.load_from_dict({
-            "vault_path": vault_root,
-            "jekyll_path": jekyll_root,
-            "vault_atomics": vault_atomics,
-            "jekyll_posts": jekyll_posts,
-            "jekyll_assets": jekyll_assets
-        })
+    def __init__(self, config: SyncConfig):
+        """
+        Initialize sync engine
         
-        # Initialize handlers
+        Args:
+            config: Configuration object for the sync engine
+        """
+        self.config = config
+        
+        # Initialize components
+        self.detector = ChangeDetector(self.config)
+        self.atomic = AtomicOperation(self.config)
         self.post_handler = PostHandler()
-        self.media_handler = MediaHandler(
-            vault_path=self.config.vault_path,
-            jekyll_assets=self.config.jekyll_assets_path
-        )
-        
-        # Initialize change detector
-        self.change_detector = ChangeDetector(
-            vault_path=self.config.vault_path,
-            jekyll_path=self.config.jekyll_path,
-            atomics_path=self.config.atomics_path,
-            jekyll_posts=self.config.jekyll_posts_path
-        )
+        self.media_handler = MediaHandler(self.config)
     
     def detect_changes(self) -> List[SyncState]:
-        """Detect changes in both Obsidian and Jekyll directories"""
-        return self.change_detector.detect_changes()
+        """
+        Detect changes in both Obsidian and Jekyll directories
+        
+        Returns:
+            List of sync states representing detected changes
+        """
+        return self.detector.detect_changes()
     
     def sync(self, direction: Optional[SyncDirection] = None) -> None:
         """

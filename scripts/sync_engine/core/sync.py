@@ -2,52 +2,43 @@
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 import frontmatter
 
 from .atomic import AtomicManager
 from .changes import ChangeDetector
 from .types import SyncState, SyncOperation, PostStatus
-from .config import ConfigManager, SyncConfig
+from .config import SyncConfig
 from .exceptions import SyncError
 from ..handlers.post import PostHandler
 from ..handlers.media import MediaHandler
+from .engine import SyncEngineV2
 
 logger = logging.getLogger(__name__)
 
 class SyncManager:
     """Manages the sync process between Obsidian and Jekyll"""
     
-    def __init__(self, config: Dict = None):
+    def __init__(self, config: SyncConfig):
         """
         Initialize sync manager
         
         Args:
-            config: Optional configuration dictionary. If not provided, loads from environment.
+            config: Configuration object for the sync manager
         """
-        try:
-            # Load configuration
-            self.config = (
-                ConfigManager.load_from_dict(config)
-                if config is not None
-                else ConfigManager.load_from_env()
-            )
-            
-            # Initialize components
-            self.atomic = AtomicManager()
-            self.changes = ChangeDetector(self.config)
-            self.post_handler = PostHandler()
-            self.media_handler = MediaHandler(
-                self.config.vault_path,
-                self.config.jekyll_assets_path
-            )
-            
-            logger.info("SyncManager initialized successfully")
-            logger.debug(f"Using configuration: {self.config}")
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize SyncManager: {e}")
-            raise SyncError(f"Initialization failed: {e}") from e
+        self.config = config
+        
+        # Initialize engine with config
+        self.engine = SyncEngineV2(self.config)
+        
+        # Initialize components
+        self.atomic = AtomicManager(self.config)
+        self.changes = ChangeDetector(self.config)
+        self.post_handler = PostHandler()
+        self.media_handler = MediaHandler(self.config)
+        
+        logger.info("SyncManager initialized successfully")
+        logger.debug(f"Using configuration: {self.config}")
     
     def sync(self) -> List[SyncState]:
         """
@@ -63,7 +54,7 @@ class SyncManager:
             logger.info("Starting sync operation")
             
             # Get changes
-            changes = self.changes.detect()
+            changes = self.changes.detect_changes()
             logger.info(f"Detected {len(changes)} changes")
             
             # Process each change
@@ -103,7 +94,12 @@ class SyncManager:
             raise SyncError(f"Sync failed: {e}") from e
     
     def cleanup(self) -> None:
-        """Clean up unused files and old backups"""
+        """
+        Clean up unused files and old backups
+        
+        Raises:
+            SyncError: If cleanup fails
+        """
         try:
             logger.info("Starting cleanup")
             
@@ -120,7 +116,15 @@ class SyncManager:
             raise SyncError(f"Cleanup failed: {e}") from e
     
     def _sync_post(self, state: SyncState) -> None:
-        """Sync a single post"""
+        """
+        Sync a single post
+        
+        Args:
+            state: Sync state for the post
+            
+        Raises:
+            SyncError: If post sync fails
+        """
         try:
             if state.operation == SyncOperation.DELETE:
                 if state.target_path.exists():
@@ -144,7 +148,15 @@ class SyncManager:
             raise SyncError(f"Post sync failed: {e}") from e
     
     def _mark_synced(self, state: SyncState) -> None:
-        """Mark files as synced in frontmatter"""
+        """
+        Mark files as synced in frontmatter
+        
+        Args:
+            state: Sync state for the files to mark
+            
+        Raises:
+            SyncError: If marking sync status fails
+        """
         try:
             for path in [state.source_path, state.target_path]:
                 if path.exists():

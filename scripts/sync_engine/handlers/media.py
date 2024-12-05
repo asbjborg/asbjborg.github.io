@@ -6,9 +6,10 @@ import logging
 import shutil
 import hashlib
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Union
 from PIL import Image, UnidentifiedImageError
 from ..core.exceptions import InvalidImageError, UnsupportedFormatError, ImageProcessingError
+from ..core.config import SyncConfig
 
 logger = logging.getLogger(__name__)
 
@@ -18,16 +19,23 @@ class MediaHandler:
     # Supported image formats
     SUPPORTED_FORMATS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
     
-    def __init__(self, vault_path: Path, jekyll_assets: Path):
+    def __init__(self, config: Union[Dict, SyncConfig]):
         """
         Initialize media handler
         
         Args:
-            vault_path: Path to Obsidian vault
-            jekyll_assets: Path to Jekyll assets directory
+            config: Sync configuration (dict or SyncConfig)
         """
-        self.vault_path = vault_path
-        self.jekyll_assets = jekyll_assets
+        # Convert dict to SyncConfig if needed
+        if isinstance(config, dict):
+            from ..core.config import ConfigManager
+            self.config = ConfigManager.load_from_dict(config)
+        else:
+            self.config = config
+            
+        self.vault_root = Path(self.config.vault_root)
+        self.jekyll_root = Path(self.config.jekyll_root)
+        self.jekyll_assets = Path(self.config.jekyll_root) / self.config.jekyll_assets
         self.jekyll_assets.mkdir(parents=True, exist_ok=True)
         
         # Track processed files to avoid duplicates
@@ -156,7 +164,7 @@ class MediaHandler:
         """
         try:
             # Try absolute vault path
-            abs_path = self.vault_path / reference
+            abs_path = self.vault_root / reference
             if abs_path.exists():
                 return abs_path
             
@@ -166,7 +174,7 @@ class MediaHandler:
             
             # Try normalized path
             normalized = reference.replace(' ', '-').lower()
-            normalized_path = self.vault_path / normalized
+            normalized_path = self.vault_root / normalized
             if normalized_path.exists():
                 return normalized_path
             
@@ -192,7 +200,7 @@ class MediaHandler:
             file_hash = hashlib.md5(original_path.read_bytes()).hexdigest()[:8]
             
             # Get relative path from vault root
-            rel_path = original_path.relative_to(self.vault_path)
+            rel_path = original_path.relative_to(self.vault_root)
             
             # Clean filename parts
             clean_parts = []
@@ -200,7 +208,7 @@ class MediaHandler:
                 # Skip common parent directories
                 if part in {'atomics', 'attachments'}:
                     continue
-                
+                    
                 # Split extension from last part
                 if part == rel_path.parts[-1]:
                     base, ext = os.path.splitext(part)
@@ -218,7 +226,6 @@ class MediaHandler:
                 clean_part = clean_part.replace('â', 'a')
                 clean_part = clean_part.replace('ä', 'a')
                 clean_part = clean_part.replace('ô', 'o')
-                clean_part = clean_part.replace('ö', 'o')
                 clean_part = clean_part.replace('û', 'u')
                 clean_part = clean_part.replace('ü', 'u')
                 # Then remove any remaining non-ASCII
@@ -396,7 +403,7 @@ class MediaHandler:
             
             # Process each reference
             for ref in refs:
-                source_path = self.vault_path / ref
+                source_path = self.vault_root / ref
                 if source_path.exists():
                     # Generate target path
                     target_path = self.jekyll_assets / ref.replace('/', '_')
@@ -415,3 +422,29 @@ class MediaHandler:
         except Exception as e:
             logger.error(f"Error processing references in {file_path}: {e}")
             raise 
+    
+    def cleanup_unused(self):
+        """Clean up unused media files"""
+        try:
+            # Get all media files in Jekyll assets
+            assets = set(self.jekyll_assets.glob('*.*'))
+            
+            # Get all referenced media files
+            referenced = set()
+            for post in self.jekyll_root.glob('_posts/*.md'):
+                with open(post) as f:
+                    content = f.read()
+                    for match in re.finditer(r'!\[.*?\]\((.*?)\)', content):
+                        path = match.group(1)
+                        if path.startswith('/'):
+                            path = path[1:]
+                        referenced.add(self.jekyll_root / path)
+            
+            # Delete unreferenced files
+            for asset in assets:
+                if asset not in referenced:
+                    asset.unlink()
+                    
+        except Exception as e:
+            logger.error(f"Error cleaning up media: {e}")
+            raise

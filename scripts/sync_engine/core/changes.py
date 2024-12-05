@@ -5,76 +5,108 @@ from pathlib import Path
 from typing import Dict, List
 from datetime import datetime
 import frontmatter
+import os
 
 from .types import SyncState, SyncOperation, SyncDirection, PostStatus
+from .config import SyncConfig
 from ..handlers.post import PostHandler
+from ..handlers.media import MediaHandler
 
 logger = logging.getLogger(__name__)
 
 class ChangeDetector:
-    """Handles all change detection logic"""
+    """Detects changes between Obsidian vault and Jekyll site"""
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: SyncConfig):
         """Initialize change detector"""
         self.config = config
-        self.vault_path = Path(config['vault_path'])
-        self.jekyll_path = Path(config['jekyll_path'])
-        self.atomics_path = self.vault_path / config['vault_atomics']
-        self.jekyll_posts = self.jekyll_path / config.get('jekyll_posts', '_posts')
         self.post_handler = PostHandler()
-    
-    def detect(self) -> List[SyncState]:
-        """Detect changes between Obsidian and Jekyll"""
+        self.media_handler = MediaHandler(config)
+        
+        # Initialize paths
+        self.vault_root = Path(config.vault_root)
+        self.jekyll_root = Path(config.jekyll_root)
+        self.atomics_path = self.vault_root / config.vault_atomics
+        self.jekyll_posts = self.jekyll_root / config.jekyll_posts
+        self.jekyll_drafts = self.jekyll_root / '_drafts'
+        
+        # Create directories if they don't exist
+        self.atomics_path.mkdir(parents=True, exist_ok=True)
+        self.jekyll_posts.mkdir(parents=True, exist_ok=True)
+        self.jekyll_drafts.mkdir(parents=True, exist_ok=True)
+        
+    def detect_changes(self) -> List[SyncState]:
+        """
+        Detect changes in both Obsidian and Jekyll directories
+        
+        Returns:
+            List[SyncState]: List of changes to sync
+        """
+        changes = []
+        
+        # Get Obsidian states
         obsidian_states = self._get_obsidian_states()
+        changes.extend(obsidian_states)
+        
+        # Get Jekyll states
         jekyll_states = self._get_jekyll_states()
-        return self._compare_states(obsidian_states, jekyll_states)
+        changes.extend(jekyll_states)
+        
+        return changes
     
-    def _get_obsidian_states(self) -> Dict[str, SyncState]:
-        """Get current state of Obsidian atomic notes"""
+    def _get_obsidian_states(self) -> List[SyncState]:
+        """Get sync states for Obsidian files"""
         states = {}
-        
-        # Recursively scan all markdown files in atomics
-        for post_path in self.atomics_path.rglob('*.md'):
-            try:
-                # Check if it's in a date folder (YYYY/MM/DD)
-                try:
-                    date_parts = list(post_path.relative_to(self.atomics_path).parts)[:3]
-                    if len(date_parts) < 3:
-                        continue  # Not in a date folder
-                    # Validate date format
-                    datetime.strptime('/'.join(date_parts), '%Y/%m/%d')
-                except (ValueError, IndexError):
-                    continue  # Not a valid date path
-                
-                # Check if it's a post (has status in frontmatter)
-                post = frontmatter.load(str(post_path))
-                status = self.post_handler.get_post_status(post)
-                if status is None:  # Not a post
-                    continue
-                
-                # Create Jekyll filename with date prefix
-                jekyll_name = f"{'-'.join(date_parts)}-{post_path.stem}.md"
-                target_path = self.jekyll_posts / jekyll_name
-                
-                states[jekyll_name] = SyncState(
-                    operation=SyncOperation.NONE,
-                    source_path=post_path,
-                    target_path=target_path,
-                    status=status,
-                    sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL,
-                    last_modified=self._get_modified_time(post, post_path)
-                )
-                
-            except Exception as e:
-                logger.error(f"Error reading file {post_path}: {e}")
-                continue
-        
-        return states
+        try:
+            # Walk through atomics directory
+            for root, _, files in os.walk(self.atomics_path):
+                root_path = Path(root)
+                for file in files:
+                    if not file.endswith('.md'):
+                        continue
+
+                    file_path = root_path / file
+                    try:
+                        # Read frontmatter
+                        with open(file_path) as f:
+                            content = f.read()
+                            frontmatter = self.post_handler.extract_frontmatter(content)
+                            if not frontmatter:
+                                continue
+
+                            # Check if it's a post
+                            status = frontmatter.get('status')
+                            if not status or status not in {'published', 'draft', 'private'}:
+                                continue
+
+                            # Get relative path from atomics root
+                            rel_path = file_path.relative_to(self.atomics_path)
+                            target_path = self.jekyll_posts_path / rel_path
+
+                            # Create sync state
+                            state = SyncState(
+                                operation=SyncOperation.CREATE,
+                                source_path=file_path,
+                                target_path=target_path,
+                                sync_direction=SyncDirection.OBSIDIAN_TO_JEKYLL,
+                                status=PostStatus(status),
+                                last_modified=os.path.getmtime(file_path)
+                            )
+                            states[file_path] = state
+
+                    except Exception as e:
+                        logger.error(f"Error reading file {file_path}: {e}")
+                        continue
+
+        except Exception as e:
+            logger.error(f"Error scanning Obsidian files: {e}")
+
+        return list(states.values())
     
     def _get_jekyll_states(self) -> Dict[str, SyncState]:
         """Get current state of Jekyll posts"""
         states = {}
-        for posts_dir in [self.jekyll_posts, self.jekyll_path / '_drafts']:
+        for posts_dir in [self.jekyll_posts, self.jekyll_root / '_drafts']:
             if not posts_dir.exists():
                 continue
             for post_path in posts_dir.glob('*.md'):

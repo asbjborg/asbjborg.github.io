@@ -29,6 +29,6 @@ class SyncState:
     operation: SyncOperation
     source_path: Path
     target_path: Optional[Path]
-    sync_direction: SyncDirection
+    sync_direction: SyncDirection = SyncDirection.OBSIDIAN_TO_JEKYLL
     status: Optional[PostStatus] = None
     last_modified: Optional[float] = None 

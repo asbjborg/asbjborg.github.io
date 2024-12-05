@@ -1,9 +1,11 @@
 # Atomic Operations
 
 ## Overview
+
 The atomic operations system ensures safe file operations with automatic backup and rollback capabilities. All file operations are executed as atomic transactions to prevent data loss.
 
 ## Core Features
+
 - Automatic backup before operations
 - Rollback on failure
 - Operation history tracking
@@ -12,6 +14,7 @@ The atomic operations system ensures safe file operations with automatic backup 
 ## Implementation
 
 ### AtomicManager Class
+
 ```python
 class AtomicManager:
     """Manages atomic file operations with backup/rollback"""
@@ -46,7 +49,8 @@ class AtomicManager:
 ## Backup Strategy
 
 ### Backup Location
-```
+
+```chart
 /vault_root
     /.atomic_backups
         /batch_20240115_123456
@@ -55,6 +59,7 @@ class AtomicManager:
 ```
 
 ### Backup Process
+
 1. Create timestamped backup folder
 2. Copy files to backup
 3. Execute operation
@@ -64,6 +69,7 @@ class AtomicManager:
 ## Usage Examples
 
 ### Basic Operation
+
 ```python
 manager = AtomicManager(config)
 
@@ -80,6 +86,7 @@ except AtomicError as e:
 ```
 
 ### Batch Operations
+
 ```python
 operations = [
     SyncOperation(type=OperationType.UPDATE, ...),
@@ -94,6 +101,7 @@ with manager.batch() as batch:
 ## Error Handling
 
 ### Automatic Rollback
+
 ```python
 try:
     manager.execute(risky_operation)
@@ -103,6 +111,7 @@ except AtomicError as e:
 ```
 
 ### Manual Recovery
+
 ```python
 # List available backups
 backups = manager.list_backups()
@@ -113,7 +122,8 @@ manager.restore_backup('batch_20240115_123456')
 
 ## Best Practices
 
-1. Always use with error handling:
+### 1. Always use with error handling
+
 ```python
 try:
     with manager.batch() as batch:
@@ -123,13 +133,15 @@ except AtomicError:
     # Batch rolled back automatically
 ```
 
-2. Clean up old backups regularly:
+### 2. Clean up old backups regularly
+
 ```python
 if manager.config['auto_cleanup']:
     manager.cleanup_old_backups()
 ```
 
-3. Use batch operations for related changes:
+### 3. Use batch operations for related changes
+
 ```python
 with manager.batch() as batch:
     # These operations succeed or fail together
@@ -138,5 +150,6 @@ with manager.batch() as batch:
 ```
 
 ## See Also
+
 - [Configuration Guide](../guides/configuration.md)
-- [Error Handling](../guides/error-handling.md) 
+- [Error Handling](../guides/error-handling.md)

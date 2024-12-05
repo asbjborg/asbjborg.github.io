@@ -1,18 +1,21 @@
-"""Atomic file operations module"""
+"""Atomic operations module"""
 
+import logging
 import os
 import shutil
-import logging
 import tempfile
-from pathlib import Path
-from contextlib import contextmanager
-from typing import Generator, Optional
 import time
+from pathlib import Path
+from typing import Optional, List, Generator, Dict
+from contextlib import contextmanager
+
+from .types import SyncState, SyncOperation
+from .config import SyncConfig
 
 logger = logging.getLogger(__name__)
 
 class AtomicOperation:
-    """Handles atomic file operations"""
+    """Handles low-level atomic file operations"""
     
     @staticmethod
     @contextmanager
@@ -22,10 +25,10 @@ class AtomicOperation:
         
         Args:
             target_path: Path to write to
-        
+            
         Yields:
             Temporary path to write to
-        
+            
         Example:
             with AtomicOperation.atomic_write(path) as tmp_path:
                 with open(tmp_path, 'w') as f:
@@ -71,10 +74,10 @@ class AtomicOperation:
         
         Args:
             target_path: Path to update
-        
+            
         Yields:
             Temporary path to write to
-        
+            
         Example:
             with AtomicOperation.atomic_update(path) as tmp_path:
                 with open(tmp_path, 'w') as f:
@@ -139,7 +142,7 @@ class AtomicOperation:
         Args:
             target_path: Path to delete
             backup: Whether to keep a backup
-        
+            
         Returns:
             Path to backup file if backup=True, None otherwise
         """
@@ -159,85 +162,126 @@ class AtomicOperation:
                 
         except Exception as e:
             logger.error(f"Error deleting {target_path}: {e}")
-            raise 
-
-class AtomicBatch:
-    """Represents a batch of atomic operations"""
-    def __init__(self):
-        self.operations = []
-        self.backups = {}
-        self.timestamp = time.time()
-        
-    def add(self, operation: SyncState):
-        """Add operation to batch"""
-        self.operations.append(operation)
+            raise
 
 class AtomicManager:
-    """Handles atomic operations with history tracking"""
+    """Handles high-level atomic operations with history tracking"""
     
-    def __init__(self):
-        self.history = []
-        self.backup_dir = Path(".atomic_backups")
-        self.backup_dir.mkdir(exist_ok=True)
+    def __init__(self, config: Optional[SyncConfig] = None):
+        """
+        Initialize atomic manager
         
-    @contextmanager
-    def batch(self):
-        """Batch multiple operations atomically"""
-        batch = AtomicBatch()
-        try:
-            yield batch
-            self._commit_batch(batch)
-        except:
-            self._rollback_batch(batch)
-            raise
+        Args:
+            config: Optional configuration
+        """
+        self.config = config
+        self.backup_dir = Path(config.backup_dir if config else '.atomic_backups')
+        self.backup_count = int(config.backup_count if config else 5)
+        self.backup_dir.mkdir(exist_ok=True)
+        self.history = []
+        
+    def batch(self) -> 'AtomicBatch':
+        """Create new atomic batch"""
+        return AtomicBatch(self)
+        
+    def _backup_file(self, path: Path) -> Optional[Path]:
+        """Create backup of file"""
+        if not path.exists():
+            return None
             
-    def _commit_batch(self, batch: AtomicBatch):
+        # Create timestamped backup directory
+        timestamp = time.strftime('%Y%m%d_%H%M%S')
+        backup_dir = self.backup_dir / f"batch_{timestamp}"
+        backup_dir.mkdir(exist_ok=True)
+        
+        # Copy file to backup
+        backup_path = backup_dir / path.name
+        shutil.copy2(path, backup_path)
+        
+        return backup_path
+        
+    def cleanup_backups(self, keep: Optional[int] = None):
+        """
+        Remove old backup directories
+        
+        Args:
+            keep: Number of backups to keep, defaults to config.backup_count
+        """
+        keep = keep or self.backup_count
+        backup_dirs = sorted(self.backup_dir.glob('batch_*'))
+        while len(backup_dirs) > keep:
+            shutil.rmtree(backup_dirs[0])
+            backup_dirs.pop(0)
+            
+    def _commit_batch(self, batch: 'AtomicBatch'):
         """Commit a batch of operations"""
         try:
-            # Create batch backup directory
-            batch_dir = self.backup_dir / f"batch_{batch.timestamp}"
-            batch_dir.mkdir()
-            
-            # Backup files before changes
+            # Create backups first
             for op in batch.operations:
-                if op.source_path.exists():
-                    backup_path = batch_dir / op.source_path.name
-                    shutil.copy2(op.source_path, backup_path)
-                    batch.backups[op.source_path] = backup_path
+                if op.target_path and op.target_path.exists():
+                    backup = self._backup_file(op.target_path)
+                    if backup:
+                        batch.backups[op.target_path] = backup
             
             # Execute operations
             for op in batch.operations:
                 self._execute_operation(op)
+                
+            # Add to history
+            self.history.extend(batch.operations)
             
-            # Record successful batch
-            self.history.append(batch)
-            
-            # Cleanup old backups (keep last 5)
-            self._cleanup_old_backups()
-            
+            # Clean up old backups if needed
+            if self.config and self.config.auto_cleanup:
+                self.cleanup_backups()
+                
         except Exception as e:
-            logger.error(f"Error committing batch: {e}")
+            logger.error(f"Batch operation failed: {e}")
             self._rollback_batch(batch)
             raise
             
-    def _rollback_batch(self, batch: AtomicBatch):
+    def _rollback_batch(self, batch: 'AtomicBatch'):
         """Rollback a batch of operations"""
+        logger.info("Rolling back batch operations")
         for path, backup in batch.backups.items():
-            if backup.exists():
-                shutil.copy2(backup, path)
+            try:
+                if backup.exists():
+                    shutil.copy2(backup, path)
+            except Exception as e:
+                logger.error(f"Failed to restore {path} from {backup}: {e}")
                 
-    def _cleanup_old_backups(self, keep: int = 5):
-        """Cleanup old backup directories"""
-        dirs = sorted(self.backup_dir.glob("batch_*"), 
-                     key=lambda x: float(x.name.split("_")[1]))
-        for old_dir in dirs[:-keep]:
-            shutil.rmtree(old_dir)
-            
     def _execute_operation(self, op: SyncState):
         """Execute a single sync operation"""
         if op.operation == SyncOperation.CREATE:
             AtomicOperation.atomic_copy(op.source_path, op.target_path)
         elif op.operation == SyncOperation.UPDATE:
-            AtomicOperation.atomic_update(op.target_path)
+            with AtomicOperation.atomic_update(op.target_path) as tmp_path:
+                shutil.copy2(op.source_path, tmp_path)
         elif op.operation == SyncOperation.DELETE:
             AtomicOperation.atomic_delete(op.target_path)
+
+class AtomicBatch:
+    """Represents a batch of atomic operations"""
+    
+    def __init__(self, manager: 'AtomicManager'):
+        """Initialize batch"""
+        self.manager = manager
+        self.operations = []
+        self.backups = {}
+        self.timestamp = time.time()
+        
+    def add(self, op: SyncState):
+        """Add operation to batch"""
+        self.operations.append(op)
+        
+    def __enter__(self):
+        """Enter context manager"""
+        return self
+        
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context manager"""
+        if exc_type is None:
+            # Success - commit changes
+            self.manager._commit_batch(self)
+        else:
+            # Error - rollback changes
+            self.manager._rollback_batch(self)

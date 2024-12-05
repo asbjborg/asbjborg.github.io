@@ -7,11 +7,25 @@ The sync engine uses pytest for testing and follows a comprehensive testing stra
 
 ```
 scripts/sync_engine/tests/
-├── test_sync.py       # Integration tests
-├── test_changes.py    # Change detection tests
-├── test_atomic.py     # Atomic operations tests
-├── test_post.py       # Post handling tests
-└── test_media.py      # Media handling tests
+├── test_sync.py              # Main sync test collector
+├── test_media.py             # Main media test collector
+├── conftest.py              # Shared fixtures
+│
+├── sync/                    # Sync test modules
+│   ├── test_basic.py       # Basic sync operations
+│   ├── test_errors.py      # Error handling
+│   ├── test_cleanup.py     # Cleanup operations
+│   ├── test_media.py       # Media handling in sync
+│   ├── test_atomic.py      # Atomic operations
+│   ├── test_paths.py       # Path handling
+│   └── test_performance.py # Performance tests
+│
+└── media/                   # Media test modules
+    ├── test_processing.py  # Image processing
+    ├── test_sync.py        # Media sync operations
+    ├── test_references.py  # Media reference handling
+    ├── test_errors.py      # Media error cases
+    └── test_performance.py # Media performance tests
 ```
 
 ## Running Tests
@@ -21,8 +35,13 @@ scripts/sync_engine/tests/
 # Run all tests
 pytest scripts/sync_engine/tests/
 
-# Run specific test file
-pytest scripts/sync_engine/tests/test_changes.py
+# Run specific test category
+pytest scripts/sync_engine/tests/test_sync.py  # All sync tests
+pytest scripts/sync_engine/tests/test_media.py # All media tests
+
+# Run specific test module
+pytest scripts/sync_engine/tests/sync/test_basic.py
+pytest scripts/sync_engine/tests/media/test_processing.py
 
 # Run with coverage
 pytest --cov=sync_engine scripts/sync_engine/tests/
@@ -30,42 +49,45 @@ pytest --cov=sync_engine scripts/sync_engine/tests/
 
 ### Test Categories
 
-#### 1. Change Detection Tests
-Tests in `test_changes.py`:
-- Post detection by status
-- Date path extraction
-- Complex filenames
-- Error handling
+#### 1. Sync Tests
+Tests in `sync/` directory:
+- Basic sync operations and engine initialization
+- Error handling and rollback
+- Cleanup functionality
+- Media handling during sync
+- Atomic operations
+- Path handling
 - Performance testing
 
-#### 2. Integration Tests
-Tests in `test_sync.py`:
-- Full sync cycles
-- Bidirectional updates
-- Conflict resolution
-- Error recovery
-
-#### 3. Performance Tests
-- Large vault scanning (>1000 files)
-- Multiple date folders
-- Many images per post
-- Memory usage monitoring
+#### 2. Media Tests
+Tests in `media/` directory:
+- Image processing and conversion
+- Media sync operations
+- Media reference handling
+- Error cases
+- Performance testing
 
 ## Test Fixtures
 
-### Basic Vault Setup
+### Basic Config Setup
 ```python
 @pytest.fixture
-def setup_test_vault(tmp_path):
-    """Create test vault with realistic structure"""
-    vault = tmp_path / 'vault'
-    jekyll = tmp_path / 'jekyll'
-    
-    # Create date folders
-    date_path = vault / 'atomics/2024/01/15'
-    date_path.mkdir(parents=True)
-    
-    return vault, jekyll, date_path
+def test_config(tmp_path):
+    """Create test configuration"""
+    vault_root = tmp_path / 'vault'
+    jekyll_root = tmp_path / 'jekyll'
+    vault_root.mkdir(parents=True)
+    jekyll_root.mkdir(parents=True)
+    (jekyll_root / 'assets' / 'img' / 'posts').mkdir(parents=True)
+
+    return ConfigManager.load_from_dict({
+        'vault_root': vault_root,
+        'jekyll_root': jekyll_root,
+        'vault_atomics': 'atomics',
+        'jekyll_posts': '_posts',
+        'jekyll_assets': 'assets/img/posts',
+        'debug': True  # Enable debug logging for tests
+    })
 ```
 
 ## Writing Tests
@@ -76,26 +98,33 @@ def setup_test_vault(tmp_path):
 3. Use proper fixtures
 4. Handle cleanup properly
 5. Document complex scenarios
+6. Place tests in appropriate subdirectory
+7. Import test classes in collector files
 
 ### Example Test
 ```python
-def test_post_detection(setup_test_vault):
-    """Test post detection by frontmatter status"""
-    vault, jekyll, date_path = setup_test_vault
+# In sync/test_basic.py
+class TestBasicSync:
+    """Tests for basic sync functionality"""
     
-    # Create test post
-    (date_path / 'test.md').write_text("""---
+    def test_basic_sync(self, test_config, setup_dirs):
+        """Test basic sync operation"""
+        vault_root, jekyll_path, atomic_path = setup_dirs
+        
+        # Create test post
+        post_path = atomic_path / "test.md"
+        post_path.write_text("""---
 status: published
 ---
 Test content""")
-    
-    detector = ChangeDetector({
-        'vault_root': str(vault),
-        'jekyll_root': str(jekyll)
-    })
-    
-    states = detector._get_obsidian_states()
-    assert len(states) == 1
+        
+        # Run sync
+        manager = SyncManager(test_config)
+        changes = manager.sync()
+        
+        # Verify changes
+        assert len(changes) == 1
+        assert (jekyll_path / '_posts/test.md').exists()
 ```
 
 ## Coverage Requirements
@@ -104,10 +133,10 @@ Test content""")
 - Integration tests: >80% coverage
 
 ## Common Test Scenarios
-1. Valid post detection
-2. Invalid frontmatter handling
-3. Complex filenames
-4. Permission issues
-5. Path validation
-6. Date format validation
-7. Performance with large datasets 
+1. Basic sync operations
+2. Error handling
+3. Media processing
+4. Path handling
+5. Performance testing
+6. Atomic operations
+7. Cleanup operations
