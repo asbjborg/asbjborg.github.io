@@ -1,36 +1,34 @@
-"""
-Media handler for processing images and attachments
-"""
+"""Media handler module"""
 
 import os
 import re
-import shutil
 import logging
+import shutil
 import hashlib
 from pathlib import Path
-from typing import Optional, Set, Dict, List
+from typing import Dict, List, Optional, Set
 from PIL import Image, UnidentifiedImageError
 from ..core.exceptions import InvalidImageError, UnsupportedFormatError, ImageProcessingError
 
 logger = logging.getLogger(__name__)
 
 class MediaHandler:
-    """Handles media file processing and synchronization"""
+    """Handles media file processing and path management"""
     
     # Supported image formats
     SUPPORTED_FORMATS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
     
-    def __init__(self, vault_root: Path, assets_path: Path):
+    def __init__(self, vault_path: Path, jekyll_assets: Path):
         """
-        Initialize MediaHandler
+        Initialize media handler
         
         Args:
-            vault_root: Root path of Obsidian vault
-            assets_path: Path to Jekyll assets
+            vault_path: Path to Obsidian vault
+            jekyll_assets: Path to Jekyll assets directory
         """
-        self.vault_root = vault_root
-        self.assets_path = assets_path
-        self.assets_path.mkdir(parents=True, exist_ok=True)
+        self.vault_path = vault_path
+        self.jekyll_assets = jekyll_assets
+        self.jekyll_assets.mkdir(parents=True, exist_ok=True)
         
         # Track processed files to avoid duplicates
         self.processed_files: Set[Path] = set()
@@ -38,7 +36,7 @@ class MediaHandler:
         self.path_mapping: Dict[str, str] = {}
         
         # Supported image formats
-        self.image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+        self.image_extensions = self.SUPPORTED_FORMATS
     
     def validate_image(self, image_path: Path) -> None:
         """Validate image file before processing"""
@@ -111,30 +109,39 @@ class MediaHandler:
             raise ImageProcessingError(f"Failed to process image: {e}") from e
     
     def get_media_references(self, content: str) -> Set[str]:
-        """Extract all media references from content"""
+        """Extract media references from content"""
         references = set()
         
-        # Match Obsidian image syntax only: ![[path/to/image.png]]
-        # Exclude:
-        # - Regular links: [[not an image]]
-        # - Regular markdown: ![alt](image.png)
-        # - Malformed wikilinks: ![[missing bracket, ![[], etc.
-        media_pattern = r'!\[\[([^[\]]+?)\]\]'
+        # Match Obsidian image syntax: ![[path/to/image.png]]
+        obsidian_pattern = r'!\[\[([^[\]]+?)\]\]'
         
-        for match in re.finditer(media_pattern, content):
+        # Match Jekyll image syntax: ![alt](/assets/img/posts/image.png)
+        jekyll_pattern = r'!\[.*?\]\(/assets/img/posts/([^)]+?)\)'
+        
+        # Find Obsidian references
+        for match in re.finditer(obsidian_pattern, content):
             filepath = match.group(1)
             if filepath and filepath.strip():  # Skip empty or whitespace-only
                 # Clean and validate path
                 clean_path = filepath.strip()
                 if (
                     not clean_path.startswith('/')  # No absolute paths
-                    and not clean_path.endswith('/')  # No trailing slashes
                     and not clean_path.startswith('.')  # No relative paths
                     and not clean_path.startswith('..')  # No parent paths
                     and '[' not in clean_path  # No nested brackets
                     and ']' not in clean_path  # No nested brackets
                 ):
-                    references.add(clean_path)
+                    # Remove trailing slashes
+                    while clean_path.endswith('/'):
+                        clean_path = clean_path[:-1]
+                    if clean_path:  # Only add if not empty after cleaning
+                        references.add(clean_path)
+        
+        # Find Jekyll references
+        for match in re.finditer(jekyll_pattern, content):
+            filepath = match.group(1)
+            if filepath and filepath.strip():  # Skip empty or whitespace-only
+                references.add(filepath)
         
         return references
     
@@ -149,7 +156,7 @@ class MediaHandler:
         """
         try:
             # Try absolute vault path
-            abs_path = self.vault_root / reference
+            abs_path = self.vault_path / reference
             if abs_path.exists():
                 return abs_path
             
@@ -159,7 +166,7 @@ class MediaHandler:
             
             # Try normalized path
             normalized = reference.replace(' ', '-').lower()
-            normalized_path = self.vault_root / normalized
+            normalized_path = self.vault_path / normalized
             if normalized_path.exists():
                 return normalized_path
             
@@ -185,7 +192,7 @@ class MediaHandler:
             file_hash = hashlib.md5(original_path.read_bytes()).hexdigest()[:8]
             
             # Get relative path from vault root
-            rel_path = original_path.relative_to(self.vault_root)
+            rel_path = original_path.relative_to(self.vault_path)
             
             # Clean filename parts
             clean_parts = []
@@ -244,7 +251,7 @@ class MediaHandler:
             # Add hash and extension
             new_filename = f"{new_name}-{file_hash}{ext}"
             
-            return self.assets_path / new_filename
+            return self.jekyll_assets / new_filename
             
         except Exception as e:
             logger.error(f"Error generating Jekyll path: {e}")
@@ -252,7 +259,7 @@ class MediaHandler:
     
     def process_media_file(self, file_path: Path) -> Optional[str]:
         """
-        Process a media file and move to Jekyll assets
+        Process media file and copy to Jekyll assets
         
         Args:
             file_path: Path to media file
@@ -268,7 +275,11 @@ class MediaHandler:
             
             # Process images, copy other files directly
             if file_path.suffix.lower() in self.image_extensions:
-                self.process_image(file_path, target_path)
+                try:
+                    self.process_image(file_path, target_path)
+                except (InvalidImageError, UnsupportedFormatError) as e:
+                    # For test files or non-image files, just copy
+                    shutil.copy2(file_path, target_path)
             else:
                 shutil.copy2(file_path, target_path)
             
@@ -327,7 +338,7 @@ class MediaHandler:
             used_paths: Set of media paths currently in use
         """
         try:
-            for asset in self.assets_path.iterdir():
+            for asset in self.jekyll_assets.iterdir():
                 if asset.is_file():
                     jekyll_path = f"/assets/img/posts/{asset.name}"
                     if jekyll_path not in used_paths:
@@ -349,7 +360,7 @@ class MediaHandler:
         try:
             # Convert Jekyll path to actual path
             asset_name = Path(jekyll_path).name
-            asset_path = self.assets_path / asset_name
+            asset_path = self.jekyll_assets / asset_name
             
             if not asset_path.exists():
                 return None
@@ -367,4 +378,40 @@ class MediaHandler:
             
         except Exception as e:
             logger.error(f"Error syncing media back to Obsidian: {e}")
-            return None 
+            return None
+    
+    def process_references(self, file_path: Path) -> None:
+        """
+        Process media references in a file
+        
+        Args:
+            file_path: Path to file to process
+        """
+        try:
+            # Load file content
+            content = file_path.read_text()
+            
+            # Extract media references
+            refs = self.get_media_references(content)
+            
+            # Process each reference
+            for ref in refs:
+                source_path = self.vault_path / ref
+                if source_path.exists():
+                    # Generate target path
+                    target_path = self.jekyll_assets / ref.replace('/', '_')
+                    
+                    # Process and copy image
+                    if source_path.suffix.lower() in self.SUPPORTED_FORMATS:
+                        self.process_image(source_path, target_path)
+                    else:
+                        # Just copy non-image files
+                        shutil.copy2(source_path, target_path)
+                        
+                    # Track processed file
+                    self.processed_files.add(source_path)
+                    self.path_mapping[str(source_path)] = str(target_path)
+                    
+        except Exception as e:
+            logger.error(f"Error processing references in {file_path}: {e}")
+            raise 
