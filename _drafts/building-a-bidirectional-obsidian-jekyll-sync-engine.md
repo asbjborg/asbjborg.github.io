@@ -168,22 +168,43 @@ Want to try it yourself? Here's how:
 2. Install dependencies:
 
    ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    pip install -r requirements.txt
    ```
 
-3. Configure your paths:
+3. Configure your paths in `.env`:
 
-   ```python
-   config = {
-       'vault_path': '~/Documents/Obsidian/MyVault',
-       'blog_path': '~/blog'
-   }
+   ```bash
+   # Copy example config
+   cp .env.example .env
+   
+   # Edit with your paths
+   VAULT_ROOT=/path/to/your/vault
+   VAULT_MEDIA_PATH=atomics
+   VAULT_POSTS_PATH=_posts
+   
+   JEKYLL_ROOT=/path/to/your/jekyll
+   JEKYLL_ASSETS_PATH=assets/img/posts
+   JEKYLL_POSTS_PATH=_posts
    ```
 
 4. Let it rip:
 
    ```python
    from sync_engine import SyncEngineV2
+   from dotenv import load_dotenv
+   import os
+   
+   # Load config from .env
+   load_dotenv()
+   
+   config = {
+       'vault_root': os.getenv('VAULT_ROOT'),
+       'vault_media': os.getenv('VAULT_MEDIA_PATH'),
+       'jekyll_root': os.getenv('JEKYLL_ROOT'),
+       'jekyll_assets': os.getenv('JEKYLL_ASSETS_PATH')
+   }
    
    engine = SyncEngineV2(config)
    engine.sync()
@@ -197,10 +218,44 @@ The real magic happens in the status handling. Want to publish a post? Just add 
 ---
 title: My Awesome Post
 status: published  # The magic word!
-image: ![[my-featured-image.jpg]]  # Will be processed automatically
+image: ![[atomics/2024/12/03/my-featured-image.jpg]]  # Will be processed automatically
 ---
 
-Here's a cool image: ![[another-image.png]]
+Here's a cool image: ![[atomics/2024/12/03/another-image.png]]
 ```
 
 And voilà! Your post is ready for its internet debut, complete with optimized images. Want to keep it as a draft? Use `status: draft`. Want to keep it private? `status: private` or just leave it out entirely.
+
+## Testing & Verification
+
+The engine comes with a comprehensive test suite to ensure everything works smoothly:
+
+```bash
+# Run all tests
+python -m pytest
+
+# Run specific test modules
+python -m pytest scripts/sync_engine/tests/test_media_sync.py
+```
+
+The tests cover:
+1. **Media Handling**
+   - Absolute path resolution
+   - Frontmatter image handling
+   - Path sanitization
+   - Bidirectional sync
+   - Image optimization
+
+2. **Core Engine**
+   - File change detection
+   - Conflict resolution
+   - Atomic operations
+   - Config handling
+
+3. **End-to-End**
+   - Full sync cycles
+   - Migration process
+   - Error recovery
+   - Performance benchmarks
+
+Each component is tested both with mock data for isolation and with real vault data for integration verification.
