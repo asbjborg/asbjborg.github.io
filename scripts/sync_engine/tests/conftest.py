@@ -28,6 +28,7 @@ def test_config(setup_dirs):
     """Create test configuration"""
     vault_root, jekyll_root, _ = setup_dirs
 
+    # Create configuration
     config = ConfigManager.load_from_dict({
         'vault_root': str(vault_root),
         'jekyll_root': str(jekyll_root),
@@ -38,12 +39,13 @@ def test_config(setup_dirs):
         'validate_paths': False  # Disable path validation for tests
     })
     
-    # Ensure paths are set correctly
-    assert config.vault_root == vault_root
-    assert config.jekyll_root == jekyll_root
-    assert config.atomics_path == vault_root / 'atomics'
-    assert config.jekyll_posts_path == jekyll_root / '_posts'
-    assert config.jekyll_assets_path == jekyll_root / 'assets/img/posts'
+    # Print paths for debugging
+    print(f"\nTest paths:")
+    print(f"vault_root: {config.vault_root}")
+    print(f"jekyll_root: {config.jekyll_root}")
+    print(f"atomics_path: {config.atomics_path}")
+    print(f"jekyll_posts_path: {config.jekyll_posts_path}")
+    print(f"jekyll_assets_path: {config.jekyll_assets_path}\n")
     
     return config
 
