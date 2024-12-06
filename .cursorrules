@@ -44,28 +44,13 @@
    - Use descriptive commit messages
    - Push to feature branch
 
-## File Structure
+## File Management
+See [File Structure](docs/reference/file-structure.md) for detailed file organization.
 
-```chart
-your-project/
-├── .gitignore           # Should include feature.md
-├── feature.md           # Local tracking, not committed
-├── .cursorrules         # Development workflow rules
-├── docs/
-│   └── test-progress.yaml  # Test progress tracking
-├── _drafts/
-│   └── feature-name.md  # Draft blog post about feature
-└── scripts/
-    └── feature/         # Feature-specific code
-```
-
-## File Purposes
-
-- feature.md: Local tracking only, used to update GitHub issue
-- docs/test-progress.yaml: Development test tracking, should be committed
-- _drafts/*.md: Blog post drafts, should be committed
-- scripts/feature/: Feature-specific code, should be committed
-- .cursorrules: Development workflow rules, should be committed
+Key files to track:
+- feature.md: Local tracking only, used to update GitHub issue (do not commit)
+- docs/test-progress.yaml: Development test tracking (should be committed)
+- _drafts/*.md: Blog post drafts (should be committed)
 
 ## Templates
 
