@@ -229,6 +229,9 @@ class MediaHandler:
             
         Returns:
             Jekyll-compatible path
+            
+        Example:
+            atomics/2024/01/15/über.jpg -> assets/img/posts/uber.jpg
         """
         try:
             # Get relative path from vault root
@@ -237,7 +240,14 @@ class MediaHandler:
             # Get filename and clean it
             filename = rel_path.name
             base, ext = os.path.splitext(filename)
-            clean_base = re.sub(r'[^\w\s-]', '', base)
+            
+            # Convert to ASCII but preserve Unicode letters
+            import unicodedata
+            clean_base = unicodedata.normalize('NFKD', base)
+            clean_base = ''.join(c for c in clean_base if not unicodedata.combining(c))
+            
+            # Replace spaces with hyphens and remove special characters
+            clean_base = re.sub(r'[^\w\s-]', '', clean_base)
             clean_base = re.sub(r'[-\s]+', '-', clean_base).strip('-').lower()
             
             # Return Jekyll assets path
