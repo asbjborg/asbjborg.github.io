@@ -1,0 +1,22 @@
+test_performance:
+  features:
+    - "Large dataset handling"
+    - "Multi-date processing"
+    - "Batch operations"
+    - "Image processing"
+  edge_cases:
+    - "Many posts per day (33)"
+    - "Multiple images per post (10)"
+    - "Multiple date folders (3)"
+    - "Parallel file operations"
+  dependencies:
+    - "SyncManager"
+    - "PostHandler"
+    - "MediaHandler"
+    - "AtomicManager"
+  expected_coverage: 85.0
+  description: >
+    Tests sync engine performance with a large dataset to ensure efficient handling
+    of many posts and images. Verifies correct counting of operations and acceptable
+    execution time. The test creates a realistic load with multiple date folders,
+    many posts per day, and multiple images per post. 
