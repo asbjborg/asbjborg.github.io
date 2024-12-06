@@ -10,7 +10,6 @@ from sync_engine.tests.test_core import (
 # Media tests
 from sync_engine.tests.test_media import (
     TestMediaProcessing,
-    TestMediaSync,
     TestMediaReferences,
     TestMediaErrors,
     TestMediaPerformance
