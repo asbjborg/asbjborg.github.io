@@ -102,13 +102,13 @@ class TestAtomicOperations:
             )
         ]
         
-        batch = AtomicBatch(operations=operations)
-        atomic_manager.execute_batch(batch)
+        batch = AtomicBatch(manager=atomic_manager, operations=operations)
+        batch.execute()
         
-        # Verify both operations completed
+        # Verify files were created
         assert (test_config.jekyll_root / "_posts/test_batch.md").exists()
         assert (test_config.jekyll_root / "assets/img/posts/test_batch.png").exists()
-
+        
     def test_atomic_rollback(self, atomic_manager, test_config):
         """Test atomic operation rollback"""
         # Create test file that will fail
@@ -132,11 +132,11 @@ class TestAtomicOperations:
             )
         ]
         
-        batch = AtomicBatch(operations=operations)
+        batch = AtomicBatch(manager=atomic_manager, operations=operations)
         
-        # Execute batch and verify rollback
-        with pytest.raises(FileNotFoundError):
-            atomic_manager.execute_batch(batch)
-        
-        # First operation should be rolled back
+        # Execute batch and expect failure
+        with pytest.raises(Exception):
+            batch.execute()
+            
+        # Verify first file was rolled back
         assert not target.exists() 

@@ -6,7 +6,7 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional, List, Generator, Dict
+from typing import Optional, List, Generator, Dict, TYPE_CHECKING
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -65,304 +65,286 @@ class AtomicUtils:
                 try:
                     yield tmp_path
                     # On success, rename temporary file to target
-                    if os.name == 'nt':  # Windows
-                        if target_path.exists():
-                            target_path.unlink()
-                    tmp_path.replace(target_path)
+                    if target_path.exists():
+                        target_path.unlink()
+                    os.rename(tmp_path, target_path)
                 except:
                     # On error, ensure temporary file is removed
-                    tmp_path.unlink()
+                    if tmp_path.exists():
+                        tmp_path.unlink()
                     raise
         except Exception as e:
             logger.error(f"Error during atomic write to {target_path}: {e}")
             raise
-    
-    @staticmethod
-    @contextmanager
-    def atomic_update(target_path: Path) -> Generator[Path, None, None]:
-        """
-        Context manager for atomic file updates with backup
-        
-        Args:
-            target_path: Path to update
-            
-        Yields:
-            Temporary path to write to
-            
-        Example:
-            with AtomicUtils.atomic_update(path) as tmp_path:
-                with open(tmp_path, 'w') as f:
-                    f.write('updated content')
-        """
-        backup_path = None
-        if target_path.exists():
-            # Create backup
-            backup_path = target_path.with_suffix(target_path.suffix + '.bak')
-            shutil.copy2(target_path, backup_path)
-        
-        try:
-            with AtomicUtils.atomic_write(target_path) as tmp_path:
-                yield tmp_path
-                if backup_path:
-                    backup_path.unlink()
-        except:
-            # Restore from backup on error
-            if backup_path and backup_path.exists():
-                backup_path.replace(target_path)
-            raise
-    
-    @staticmethod
-    def atomic_copy(source_path: Path, target_path: Path) -> None:
-        """
-        Atomically copy a file
-        
-        Args:
-            source_path: Path to copy from
-            target_path: Path to copy to
-        """
-        try:
-            with AtomicUtils.atomic_write(target_path) as tmp_path:
-                shutil.copy2(source_path, tmp_path)
-        except Exception as e:
-            logger.error(f"Error copying {source_path} to {target_path}: {e}")
-            raise
-    
-    @staticmethod
-    def atomic_move(source_path: Path, target_path: Path) -> None:
-        """
-        Atomically move a file
-        
-        Args:
-            source_path: Path to move from
-            target_path: Path to move to
-        """
-        try:
-            # First copy atomically
-            AtomicUtils.atomic_copy(source_path, target_path)
-            # Then remove source
-            source_path.unlink()
-        except Exception as e:
-            logger.error(f"Error moving {source_path} to {target_path}: {e}")
-            raise
-    
-    @staticmethod
-    def atomic_delete(target_path: Path, backup: bool = True) -> Optional[Path]:
-        """
-        Atomically delete a file with optional backup
-        
-        Args:
-            target_path: Path to delete
-            backup: Whether to keep a backup
-            
-        Returns:
-            Path to backup file if backup=True, None otherwise
-        """
-        try:
-            if not target_path.exists():
-                return None
-            
-            if backup:
-                # Create backup
-                backup_path = target_path.with_suffix(target_path.suffix + '.bak')
-                shutil.copy2(target_path, backup_path)
-                target_path.unlink()
-                return backup_path
-            else:
-                target_path.unlink()
-                return None
-                
-        except Exception as e:
-            logger.error(f"Error deleting {target_path}: {e}")
-            raise
 
 class AtomicManager:
-    """Handles high-level atomic operations with history tracking"""
+    """Manages atomic file operations with backup and rollback"""
     
-    def __init__(self, config: Optional[SyncConfig] = None):
-        """
-        Initialize atomic manager
-        
-        Args:
-            config: Optional configuration
-        """
+    def __init__(self, config: SyncConfig):
+        """Initialize atomic manager with config"""
         self.config = config
-        self.backup_dir = Path(config.backup_dir if config else '.atomic_backups')
-        self.backup_count = int(config.backup_count if config else 5)
-        self.backup_dir.mkdir(exist_ok=True)
-        self.history: List[AtomicOperation] = []
+        self.backup_dir = Path(config.backup_dir)
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        self.operations: List[AtomicOperation] = []
         
+    def write(self, target_path: Path, content: str, make_backup: bool = True) -> None:
+        """Write content atomically with optional backup"""
+        try:
+            # Create backup if requested
+            if make_backup and target_path.exists():
+                backup_path = self.create_backup(target_path)
+            else:
+                backup_path = None
+                
+            # Write content atomically
+            with AtomicUtils.atomic_write(target_path) as tmp_path:
+                tmp_path.write_text(content)
+                
+            # Track operation
+            self.operations.append(AtomicOperation(
+                operation_type=SyncOperation.WRITE,
+                source_path=None,
+                target_path=target_path,
+                state=SyncState.COMPLETED,
+                backup_path=backup_path
+            ))
+            
+        except Exception as e:
+            logger.error(f"Failed to write {target_path}: {e}")
+            raise
+            
+    def copy(self, source_path: Path, target_path: Path, make_backup: bool = True) -> None:
+        """Copy file atomically with optional backup"""
+        try:
+            # Create backup if requested
+            if make_backup and target_path.exists():
+                backup_path = self.create_backup(target_path)
+            else:
+                backup_path = None
+                
+            # Copy file atomically
+            with AtomicUtils.atomic_write(target_path) as tmp_path:
+                shutil.copy2(source_path, tmp_path)
+                
+            # Track operation
+            self.operations.append(AtomicOperation(
+                operation_type=SyncOperation.COPY,
+                source_path=source_path,
+                target_path=target_path,
+                state=SyncState.COMPLETED,
+                backup_path=backup_path
+            ))
+            
+        except Exception as e:
+            logger.error(f"Failed to copy {source_path} to {target_path}: {e}")
+            raise
+            
+    def move(self, source_path: Path, target_path: Path, make_backup: bool = True) -> None:
+        """Move file atomically with optional backup"""
+        try:
+            # Create backup if requested
+            if make_backup and target_path.exists():
+                backup_path = self.create_backup(target_path)
+            else:
+                backup_path = None
+                
+            # Move file atomically
+            with AtomicUtils.atomic_write(target_path) as tmp_path:
+                shutil.move(source_path, tmp_path)
+                
+            # Track operation
+            self.operations.append(AtomicOperation(
+                operation_type=SyncOperation.MOVE,
+                source_path=source_path,
+                target_path=target_path,
+                state=SyncState.COMPLETED,
+                backup_path=backup_path
+            ))
+            
+        except Exception as e:
+            logger.error(f"Failed to move {source_path} to {target_path}: {e}")
+            raise
+            
+    def delete(self, target_path: Path, make_backup: bool = True) -> None:
+        """Delete file with optional backup"""
+        try:
+            # Create backup if requested
+            if make_backup and target_path.exists():
+                backup_path = self.create_backup(target_path)
+            else:
+                backup_path = None
+                
+            # Delete file
+            if target_path.exists():
+                target_path.unlink()
+                
+            # Track operation
+            self.operations.append(AtomicOperation(
+                operation_type=SyncOperation.DELETE,
+                source_path=None,
+                target_path=target_path,
+                state=SyncState.COMPLETED,
+                backup_path=backup_path
+            ))
+            
+        except Exception as e:
+            logger.error(f"Failed to delete {target_path}: {e}")
+            raise
+            
+    def create_backup(self, file_path: Path) -> Optional[Path]:
+        """Create backup of file"""
+        try:
+            if not file_path.exists():
+                return None
+                
+            # Generate backup path with timestamp
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_name = f"{file_path.stem}_{timestamp}{file_path.suffix}"
+            backup_path = self.backup_dir / backup_name
+            
+            # Copy file to backup
+            shutil.copy2(file_path, backup_path)
+            
+            return backup_path
+            
+        except Exception as e:
+            logger.error(f"Failed to create backup of {file_path}: {e}")
+            return None
+            
+    def restore_backup(self, operation: AtomicOperation) -> bool:
+        """Restore from backup for given operation"""
+        try:
+            if not operation.backup_path or not operation.backup_path.exists():
+                return False
+                
+            # Restore from backup
+            shutil.copy2(operation.backup_path, operation.target_path)
+            
+            # Update operation state
+            operation.state = SyncState.ROLLED_BACK
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to restore backup for {operation.target_path}: {e}")
+            return False
+            
+    def rollback(self) -> None:
+        """Rollback all operations in reverse order"""
+        for operation in reversed(self.operations):
+            try:
+                if operation.state != SyncState.COMPLETED:
+                    continue
+                    
+                if operation.operation_type == SyncOperation.DELETE:
+                    # Restore deleted file from backup
+                    if operation.backup_path:
+                        self.restore_backup(operation)
+                        
+                elif operation.operation_type in {SyncOperation.WRITE, SyncOperation.COPY, SyncOperation.MOVE}:
+                    # Restore original file from backup
+                    if operation.backup_path:
+                        self.restore_backup(operation)
+                    else:
+                        # If no backup, just delete the file
+                        operation.target_path.unlink(missing_ok=True)
+                        operation.state = SyncState.ROLLED_BACK
+                        
+            except Exception as e:
+                logger.error(f"Failed to rollback operation {operation}: {e}")
+                continue
+                
+    def cleanup_backups(self, max_age_days: int = 7) -> None:
+        """Clean up old backup files"""
+        try:
+            now = time.time()
+            for backup_file in self.backup_dir.iterdir():
+                if backup_file.is_file():
+                    age_days = (now - backup_file.stat().st_mtime) / (24 * 3600)
+                    if age_days > max_age_days:
+                        backup_file.unlink()
+                        
+        except Exception as e:
+            logger.error(f"Failed to cleanup backups: {e}")
+            pass
+            
     def execute_operation(self, operation: AtomicOperation) -> None:
         """Execute a single atomic operation"""
         try:
             if operation.operation_type == SyncOperation.WRITE:
-                with AtomicUtils.atomic_write(operation.target_path) as tmp_path:
-                    shutil.copy2(operation.source_path, tmp_path)
+                self.write(operation.target_path, operation.source_path.read_text())
             elif operation.operation_type == SyncOperation.COPY:
-                AtomicUtils.atomic_copy(operation.source_path, operation.target_path)
+                self.copy(operation.source_path, operation.target_path)
             elif operation.operation_type == SyncOperation.MOVE:
-                AtomicUtils.atomic_move(operation.source_path, operation.target_path)
+                self.move(operation.source_path, operation.target_path)
             elif operation.operation_type == SyncOperation.DELETE:
-                backup_path = AtomicUtils.atomic_delete(operation.target_path)
-                operation.backup_path = backup_path
-            
+                self.delete(operation.target_path)
+                
             operation.state = SyncState.COMPLETED
-            self.history.append(operation)
             
         except Exception as e:
             operation.state = SyncState.FAILED
             logger.error(f"Operation failed: {e}")
             raise
-        
-    def execute_batch(self, batch: 'AtomicBatch') -> None:
-        """Execute a batch of operations atomically"""
-        self._commit_batch(batch)
-        
-    def batch(self) -> 'AtomicBatch':
-        """Create new atomic batch"""
-        return AtomicBatch(self)
-        
-    def _backup_file(self, path: Path) -> Optional[Path]:
-        """Create backup of file"""
-        if not path.exists():
-            return None
+
+@dataclass
+class AtomicBatch:
+    """Represents a batch of atomic operations"""
+    manager: AtomicManager
+    operations: List[AtomicOperation] = None
+    backups: Dict[Path, Path] = None
+    
+    def __post_init__(self):
+        """Initialize collections"""
+        if self.operations is None:
+            self.operations = []
+        if self.backups is None:
+            self.backups = {}
             
-        # Create timestamped backup directory
-        timestamp = time.strftime('%Y%m%d_%H%M%S')
-        backup_dir = self.backup_dir / f"batch_{timestamp}"
-        backup_dir.mkdir(exist_ok=True)
+    def add_operation(self, operation: AtomicOperation) -> None:
+        """Add operation to batch"""
+        self.operations.append(operation)
         
-        # Copy file to backup
-        backup_path = backup_dir / path.name
-        shutil.copy2(path, backup_path)
-        
-        return backup_path
-        
-    def cleanup_backups(self, keep: Optional[int] = None):
-        """
-        Remove old backup directories
-        
-        Args:
-            keep: Number of backups to keep, defaults to config.backup_count
-        """
-        keep = keep or self.backup_count
-        backup_dirs = sorted(self.backup_dir.glob('batch_*'))
-        while len(backup_dirs) > keep:
-            shutil.rmtree(backup_dirs[0])
-            backup_dirs.pop(0)
-            
-    def _commit_batch(self, batch: 'AtomicBatch'):
-        """Commit a batch of operations"""
+    def execute(self) -> None:
+        """Execute all operations in batch"""
         try:
             # Create backups first
-            for op in batch.operations:
+            for op in self.operations:
                 if op.target_path and op.target_path.exists():
-                    backup = self._backup_file(op.target_path)
+                    backup = self.manager.create_backup(op.target_path)
                     if backup:
-                        batch.backups[op.target_path] = backup
-            
+                        self.backups[op.target_path] = backup
+                        
             # Execute operations
-            for op in batch.operations:
-                self.execute_operation(op)
-                
-            # Clean up old backups if needed
-            if self.config and self.config.auto_cleanup:
-                self.cleanup_backups()
+            for op in self.operations:
+                self.manager.execute_operation(op)
                 
         except Exception as e:
             logger.error(f"Batch operation failed: {e}")
-            self._rollback_batch(batch)
+            self.rollback()
             raise
             
-    def _rollback_batch(self, batch: 'AtomicBatch'):
-        """Rollback a batch of operations"""
+    def rollback(self) -> None:
+        """Rollback all operations in batch"""
         logger.info("Rolling back batch operations")
         
         # First restore any backups
-        for path, backup in batch.backups.items():
+        for path, backup in self.backups.items():
             try:
                 if backup.exists():
                     shutil.copy2(backup, path)
             except Exception as e:
                 logger.error(f"Failed to restore {path} from {backup}: {e}")
-        
+                
         # Then remove any newly created files that didn't have backups
-        for op in batch.operations:
+        for op in self.operations:
             if op.target_path and op.target_path.exists():
-                if op.target_path not in batch.backups:
+                if op.target_path not in self.backups:
                     try:
                         op.target_path.unlink()
                     except Exception as e:
                         logger.error(f"Failed to remove {op.target_path}: {e}")
-    
-    def _backup(self, target_path: Path) -> None:
-        """Create backup of target file"""
-        if not target_path.exists():
-            return
-            
-        # Create backup directory
-        backup_dir = target_path.parent / '.atomic_backups'
-        backup_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Create backup with timestamp
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_path = backup_dir / f"{target_path.name}.{timestamp}.bak"
-        
-        # Copy file to backup
-        import shutil
-        shutil.copy2(target_path, backup_path)
-        
-    def write(self, target_path: Path, content: str, make_backup: bool = True) -> None:
-        """Write content to file atomically"""
-        if make_backup:
-            self._backup(target_path)
-            
-        # Create parent directories
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Write to temp file first
-        temp_path = target_path.with_suffix(target_path.suffix + '.tmp')
-        temp_path.write_text(content)
-        
-        # Move temp file to target
-        temp_path.replace(target_path)
-        
-    def copy(self, source_path: Path, target_path: Path, make_backup: bool = True) -> None:
-        """Copy file atomically"""
-        try:
-            # Create parent directories
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Create backup if needed
-            if make_backup and target_path.exists():
-                self._backup(target_path)
-            
-            # Copy to temp file first
-            temp_path = target_path.with_suffix(target_path.suffix + '.tmp')
-            shutil.copy2(source_path, temp_path)
-            
-            # Move temp file to target
-            temp_path.replace(target_path)
-            
-            # Record operation
-            operation = AtomicOperation(
-                operation_type=SyncOperation.COPY,
-                source_path=source_path,
-                target_path=target_path,
-                state=SyncState.COMPLETED
-            )
-            self.history.append(operation)
-            
-        except Exception as e:
-            logger.error(f"Failed to copy {source_path} to {target_path}: {e}")
-            raise
-
-@dataclass
-class AtomicBatch:
-    """Represents a batch of atomic operations"""
-    operations: List[AtomicOperation]
-    backups: Dict[Path, Path] = None
-    
-    def __post_init__(self):
-        """Initialize backups dict"""
-        if self.backups is None:
-            self.backups = {}
+                        
+        # Mark all operations as rolled back
+        for op in self.operations:
+            op.state = SyncState.ROLLED_BACK 
