@@ -9,11 +9,16 @@ from datetime import datetime
 import yaml
 
 from ..core.types import PostStatus, SyncDirection
+from ..core.config import SyncConfig
 
 logger = logging.getLogger(__name__)
 
 class PostHandler:
     """Handles post processing and status management"""
+    
+    def __init__(self, config: SyncConfig):
+        """Initialize post handler with config"""
+        self.config = config
     
     def process(self, source_path: Path, target_path: Path, direction: SyncDirection = SyncDirection.OBSIDIAN_TO_JEKYLL) -> str:
         """
@@ -129,21 +134,23 @@ class PostHandler:
                 **post.metadata
             )
             
-            # Convert Obsidian image links to Jekyll format
+            # Convert Obsidian image links to Jekyll format in content
             content = processed.content
             content = content.replace('![[', '![](')
             content = content.replace(']]', ')')
-            content = content.replace('atomics/', '/assets/img/posts/')
+            content = content.replace(f"{self.config.vault_atomics}/", '/assets/img/posts/')
             processed.content = content
             
             # Update frontmatter
             for key, value in processed.metadata.items():
                 if isinstance(value, str):
-                    if '![[' in value and ']]' in value:
-                        # Convert image links in frontmatter
-                        value = value.replace('![[', '![](')
+                    if '[[' in value and ']]' in value:
+                        # Convert wikilinks in frontmatter (no ! prefix needed)
+                        value = value.replace('[[', '![](')
                         value = value.replace(']]', ')')
-                        value = value.replace('atomics/', '/assets/img/posts/')
+                        value = value.replace(f"{self.config.vault_atomics}/", '/assets/img/posts/')
+                        # Remove any quotes around the link
+                        value = value.strip('"')
                         processed.metadata[key] = value
             
             return processed
@@ -169,9 +176,9 @@ class PostHandler:
                 **post.metadata
             )
             
-            # Convert Jekyll image links to Obsidian format
+            # Convert Jekyll image links to Obsidian format in content
             content = processed.content
-            content = content.replace('/assets/img/posts/', 'atomics/')
+            content = content.replace('/assets/img/posts/', f"{self.config.vault_atomics}/")
             content = content.replace('![', '![[')
             content = content.replace(')', ']]')
             processed.content = content
@@ -180,10 +187,13 @@ class PostHandler:
             for key, value in processed.metadata.items():
                 if isinstance(value, str):
                     if '/assets/img/posts/' in value:
-                        # Convert image links in frontmatter
-                        value = value.replace('/assets/img/posts/', 'atomics/')
-                        value = value.replace('![', '![[')
+                        # Convert image links in frontmatter (no ! prefix)
+                        value = value.replace('/assets/img/posts/', f"{self.config.vault_atomics}/")
+                        value = value.replace('![', '[[')  # No ! prefix in frontmatter
                         value = value.replace(')', ']]')
+                        # Add quotes around the link
+                        if not value.startswith('"'):
+                            value = f'"{value}"'
                         processed.metadata[key] = value
             
             return processed
@@ -227,34 +237,39 @@ class PostHandler:
             logger.error(f"Failed to process frontmatter: {e}")
             return content
     
-    def get_jekyll_path(self, source_path: Path, jekyll_root: Path) -> Path:
+    def get_jekyll_path(self, source_path: Path, jekyll_root: Path = None) -> Path:
         """Convert Obsidian path to Jekyll path"""
         try:
+            if jekyll_root is None:
+                jekyll_root = self.config.jekyll_root
+                
             # Extract date from path (YYYY/MM/DD)
             parts = list(source_path.parts)
-            if len(parts) >= 4:
+            date_prefix = None
+            
+            # Try to find date in path
+            for i in range(len(parts) - 3):
                 try:
-                    year = int(parts[-4])
-                    month = int(parts[-3])
-                    day = int(parts[-2])
-                    date_prefix = f"{year:04d}-{month:02d}-{day:02d}"
+                    year = int(parts[i])
+                    month = int(parts[i + 1])
+                    day = int(parts[i + 2])
+                    if 2000 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= 31:
+                        date_prefix = f"{year:04d}-{month:02d}-{day:02d}"
+                        break
                 except (ValueError, IndexError):
-                    # Use file modification time if path doesn't contain date
-                    mtime = source_path.stat().st_mtime
-                    dt = datetime.fromtimestamp(mtime)
-                    date_prefix = dt.strftime('%Y-%m-%d')
-            else:
-                # Use file modification time
-                mtime = source_path.stat().st_mtime
-                dt = datetime.fromtimestamp(mtime)
-                date_prefix = dt.strftime('%Y-%m-%d')
+                    continue
+            
+            if not date_prefix:
+                # Use current date if no date in path
+                now = datetime.now()
+                date_prefix = now.strftime('%Y-%m-%d')
                 
             # Get filename without extension
             filename = source_path.stem
             
             # Convert spaces to hyphens and remove special characters
             filename = re.sub(r'[^\w\s-]', '', filename)
-            filename = re.sub(r'[-\s]+', '-', filename).strip('-')
+            filename = re.sub(r'[-\s]+', '-', filename).strip('-').lower()
             
             # Create Jekyll path
             jekyll_filename = f"{date_prefix}-{filename}.md"
@@ -262,4 +277,4 @@ class PostHandler:
             
         except Exception as e:
             logger.error(f"Error converting path {source_path}: {e}")
-            raise ValueError(f"Failed to convert path: {e}")
+            raise ValueError(f"Failed to convert path: {e}") from e
