@@ -26,8 +26,19 @@
 - [x] Convert to Jekyll web paths (/assets/img/posts/image.png)
 - [x] Only sync media referenced by posts
 - [x] Clean up unused media in Jekyll
+  - [x] Configurable cleanup timing
+  - [x] Safe cleanup with file checks
+  - [x] Proper binary file handling
 - [x] Image optimization and resizing
 - [x] Handle complex filenames and paths
+- [x] Robust error handling
+  - [x] File operation errors
+  - [x] Permission issues
+  - [x] Binary file handling
+- [x] Detailed operation logging
+  - [x] File operation tracking
+  - [x] Error reporting
+  - [x] Debug logging
 
 ## Sync Logic ✅
 - [x] Bidirectional sync

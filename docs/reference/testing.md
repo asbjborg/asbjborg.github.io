@@ -7,24 +7,34 @@ The sync engine uses pytest for testing and follows a comprehensive testing stra
 
 ```
 scripts/sync_engine/tests/
-├── test_sync.py              # Main sync test collector
-├── test_media.py             # Main media test collector
-├── conftest.py              # Shared fixtures
+├── test_all.py              # Main test collector
+├── test_core.py             # Core test collector
+├── test_handlers.py         # Handlers test collector
+├── test_sync.py             # Sync test collector
+├── test_media.py            # Media test collector
+├── conftest.py             # Shared fixtures
 │
-├── sync/                    # Sync test modules
-│   ├── test_basic.py       # Basic sync operations
-│   ├── test_errors.py      # Error handling
-│   ├── test_cleanup.py     # Cleanup operations
-│   ├── test_media.py       # Media handling in sync
-│   ├── test_atomic.py      # Atomic operations
-│   ├── test_paths.py       # Path handling
+├── core/                   # Core test modules
+│   ├── test_atomic.py     # Atomic operations
+│   ├── test_changes.py    # Change detection
+│   └── test_config.py     # Configuration handling
+│
+├── handlers/               # Handler test modules
+│   └── test_post.py       # Post handling
+│
+├── sync/                   # Sync test modules
+│   ├── test_basic.py      # Basic sync operations
+│   ├── test_errors.py     # Error handling
+│   ├── test_cleanup.py    # Cleanup operations
+│   ├── test_media.py      # Media handling in sync
+│   ├── test_paths.py      # Path handling
 │   └── test_performance.py # Performance tests
 │
-└── media/                   # Media test modules
-    ├── test_processing.py  # Image processing
-    ├── test_sync.py        # Media sync operations
-    ├── test_references.py  # Media reference handling
-    ├── test_errors.py      # Media error cases
+└── media/                  # Media test modules
+    ├── test_processing.py # Image processing
+    ├── test_sync.py       # Media sync operations
+    ├── test_references.py # Media reference handling
+    ├── test_errors.py     # Media error cases
     └── test_performance.py # Media performance tests
 ```
 
@@ -36,8 +46,10 @@ scripts/sync_engine/tests/
 pytest scripts/sync_engine/tests/
 
 # Run specific test category
-pytest scripts/sync_engine/tests/test_sync.py  # All sync tests
-pytest scripts/sync_engine/tests/test_media.py # All media tests
+pytest scripts/sync_engine/tests/test_core.py   # All core tests
+pytest scripts/sync_engine/tests/test_sync.py   # All sync tests
+pytest scripts/sync_engine/tests/test_media.py  # All media tests
+pytest scripts/sync_engine/tests/test_handlers.py # All handler tests
 
 # Run specific test module
 pytest scripts/sync_engine/tests/sync/test_basic.py

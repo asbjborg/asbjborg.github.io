@@ -80,16 +80,32 @@ Maps to: [Test Coverage](checklist.md#test-coverage)
   - [x] Config validation
   - [x] Path initialization ← "Test Coverage > Basic operations"
   - [x] Error conditions ← "Test Coverage > Error handling"
+  - [x] Cleanup configuration
+    - [x] Auto cleanup timing
+    - [x] Safe file operations
+    - [x] Binary file handling
 
 - [x] atomic.py Tests
   - [x] Backup/restore
   - [x] Operation history
   - [x] Batch operations
+  - [x] Binary file operations
+    - [x] Safe file copying
+    - [x] Proper cleanup
+    - [x] Error handling
 
 - [x] engine.py Tests
   - [x] Bidirectional sync ← "Test Coverage > Basic operations"
   - [x] Conflict handling ← "Test Coverage > Complex scenarios"
   - [x] Transaction management
+  - [x] Media handling
+    - [x] Binary file operations
+    - [x] Path conversion
+    - [x] Cleanup timing
+  - [x] Debug logging
+    - [x] Operation tracking
+    - [x] Error reporting
+    - [x] File state tracking
 
 ## See Also
 - [Sync Strategy](../sync-strategy.md) - Core strategy
