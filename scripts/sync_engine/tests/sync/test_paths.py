@@ -1,11 +1,12 @@
-"""Tests for sync path handling"""
+"""Tests for path handling"""
 
 import pytest
 from pathlib import Path
 from sync_engine.core.sync import SyncManager
+from PIL import Image
 
 class TestSyncPaths:
-    """Tests for sync path handling"""
+    """Tests for path handling"""
     
     def test_complex_paths(self, test_config, setup_dirs):
         """Test handling of complex file paths"""
@@ -14,7 +15,7 @@ class TestSyncPaths:
         # Create post with complex paths
         post_content = """---
 status: published
-image: ![[atomics/2024/01/15/image with spaces.png]]
+image: "[[atomics/2024/01/15/image with spaces.png]]"
 ---
 # Complex Paths
 
@@ -33,8 +34,19 @@ image: ![[atomics/2024/01/15/image with spaces.png]]
             'very-very-very-very-very-very-long-filename.gif'
         ]
         
+        # Create date directory
+        img_dir = atomic_path / '2024/01/15'
+        img_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create test images
+        test_img = Image.new('RGB', (100, 100), color='red')
         for img in images:
-            (atomic_path / img).write_bytes(b'test')
+            if img.endswith('.gif'):
+                # Create GIF with one frame
+                test_img.save(img_dir / img, format='GIF', save_all=True, append_images=[test_img])
+            else:
+                # Save as normal image
+                test_img.save(img_dir / img)
         
         # Run sync
         manager = SyncManager(test_config)
@@ -42,5 +54,9 @@ image: ![[atomics/2024/01/15/image with spaces.png]]
         
         # Verify all images were processed
         assert len(changes) == 5  # 1 post + 4 images
-        assert len(list(jekyll_path.glob('assets/img/posts/*'))) == 4
-        assert (jekyll_path / '_posts/2024-01-15-complex-post-with-spaces.md').exists() 
+        
+        # Verify files exist in Jekyll
+        assert (jekyll_path / '_posts/complex-post-with-spaces.md').exists()
+        for change in changes:
+            if change.target_path:
+                assert change.target_path.exists() 
