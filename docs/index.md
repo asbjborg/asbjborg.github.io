@@ -24,4 +24,4 @@
 
 ## Development
 - [Strategy Checklist](strategy/implementation/checklist.md) - Implementation progress
-- [Test Progress](test-progress.md) - Test coverage and status 
+- [Test Progress](test-progress.yaml) - Test coverage and status 
