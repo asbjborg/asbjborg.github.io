@@ -1,0 +1,137 @@
+# Feature Development Workflow
+
+## Prerequisites
+
+1. Feature Creation
+   - Create GitHub issue for the feature
+   - Note the issue number (e.g., #6)
+   - Add appropriate labels and milestone
+
+2. Branch Setup
+   - Create feature branch: `feature/name-v2`
+   - Create feature.md from template
+   - Create draft blog post in _drafts/
+   - Add feature.md to .gitignore
+
+## Order of Operations
+
+1. Code Development
+   - Write/update code in appropriate module
+   - Follow modular structure
+   - Add comments and docstrings
+   - Consider error handling
+
+2. Blog Post Update
+   - Update draft post with new features
+   - Add code examples if relevant
+   - Keep tone casual but informative
+   - Add technical details after the friendly intro
+
+3. Feature Tracking
+   - Update feature.md locally
+   - Mark completed tasks
+   - Add new tasks if discovered
+   - Update progress details
+
+4. Remote Feature Update
+   - Use feature.md to update GitHub issue
+   - Command: gh issue edit ISSUE_NUMBER --body "$(cat feature.md)"
+   - DO NOT commit feature.md (should be in .gitignore)
+
+5. Code Commits
+   - Commit code changes
+   - Commit blog post updates
+   - Use descriptive commit messages
+   - Push to feature branch
+
+## File Structure
+
+```chart
+your-project/
+├── .gitignore           # Should include feature.md
+├── feature.md           # Local tracking, not committed
+├── .cursorrules         # Development workflow rules
+├── docs/
+│   └── test-progress.yaml  # Test progress tracking
+├── _drafts/
+│   └── feature-name.md  # Draft blog post about feature
+└── scripts/
+    └── feature/         # Feature-specific code
+```
+
+## File Purposes
+
+- feature.md: Local tracking only, used to update GitHub issue
+- docs/test-progress.yaml: Development test tracking, should be committed
+- _drafts/*.md: Blog post drafts, should be committed
+- scripts/feature/: Feature-specific code, should be committed
+- .cursorrules: Development workflow rules, should be committed
+
+## Templates
+
+### feature.md Template
+
+```markdown
+# Feature Name
+
+Brief description of the feature.
+
+## Tasks
+1. Core Development
+   - [ ] Task 1
+   - [ ] Task 2
+
+2. Documentation
+   - [ ] Update technical docs
+   - [ ] Write blog post
+   - [ ] Add user guide
+
+## Success Criteria
+- Criterion 1
+- Criterion 2
+
+## Testing Scope
+1. Unit Tests
+   - Test area 1
+   - Test area 2
+
+Related branch: feature/name-v2
+```
+
+## Commit Message Style
+
+- feat: New features
+- fix: Bug fixes
+- docs: Documentation updates
+- refactor: Code restructuring
+- test: Adding tests
+- chore: Maintenance tasks
+
+## Branch Strategy
+
+- Create feature-specific branch
+- Commit atomic changes
+- Keep blog post updated with progress
+- Update GitHub issue after significant changes
+- PR when feature is complete
+
+## Important Lessons
+
+1. Code Modification
+   - Make small, targeted changes instead of broad sweeps
+   - Always read and understand existing code before modifying
+   - Test each change individually
+   - Document why changes are needed
+
+2. Refactoring Strategy
+   - Break large files into logical modules
+   - Keep functions focused and atomic
+   - Add clear interface documentation
+   - Maintain proper references between modules
+   - Add comments explaining module relationships
+
+3. Testing Approach
+   - Write tests before fixing bugs
+   - Add edge cases to test suite
+   - Document test scenarios
+   - Keep test files organized and focused
