@@ -1,3 +1,32 @@
+# Development Rules
+
+## Communication Style
+- Be casual but professional
+- Be terse and direct - no high-level platitudes
+- Give answers immediately, explain afterward if needed
+- Split into multiple responses if needed
+- Value good arguments over authorities
+- Consider new/contrarian ideas, not just conventional wisdom
+- Flag speculative suggestions clearly
+- No moral lectures
+- Discuss safety only when crucial and non-obvious
+- Cite sources at the end, not inline
+
+## Code Changes
+- Always read files before modifying
+- Work iteratively with frequent commits
+- Document changes with clear commit messages
+- Clean up after refactors to avoid stale files
+- Keep code adjustments brief - show only relevant lines
+- Respect existing prettier/lint preferences
+- Check if files exist before creating new ones
+
+## Environment
+- Assume MacOS environment
+- Never assume fresh environment
+- Check existing state before changes
+- Use pd.concat instead of pd.append in pandas
+
 # Feature Development Workflow
 
 ## Prerequisites
