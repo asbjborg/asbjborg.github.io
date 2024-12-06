@@ -238,43 +238,81 @@ class PostHandler:
             return content
     
     def get_jekyll_path(self, source_path: Path, jekyll_root: Path = None) -> Path:
-        """Convert Obsidian path to Jekyll path"""
+        """
+        Convert Obsidian path to Jekyll path
+        
+        Args:
+            source_path: Source file path in Obsidian
+            jekyll_root: Optional Jekyll root path (uses config if not provided)
+            
+        Returns:
+            Path object for Jekyll target path
+            
+        Example:
+            atomics/2024/01/15/my post.md -> _posts/2024-01-15-my-post.md
+        """
         try:
             if jekyll_root is None:
                 jekyll_root = self.config.jekyll_root
                 
             # Extract date from path (YYYY/MM/DD)
             parts = list(source_path.parts)
-            date_prefix = None
+            date_parts = []
             
-            # Try to find date in path
-            for i in range(len(parts) - 3):
-                try:
-                    year = int(parts[i])
-                    month = int(parts[i + 1])
-                    day = int(parts[i + 2])
-                    if 2000 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= 31:
-                        date_prefix = f"{year:04d}-{month:02d}-{day:02d}"
-                        break
-                except (ValueError, IndexError):
-                    continue
+            # Find the date parts in the path
+            for i, part in enumerate(parts):
+                if re.match(r'^\d{4}$', part):  # Year
+                    if i+2 < len(parts):  # Make sure we have month and day
+                        if re.match(r'^\d{2}$', parts[i+1]) and re.match(r'^\d{2}$', parts[i+2]):
+                            date_parts = parts[i:i+3]
+                            break
             
-            if not date_prefix:
-                # Use current date if no date in path
-                now = datetime.now()
-                date_prefix = now.strftime('%Y-%m-%d')
+            if not date_parts:
+                logger.warning(f"No date found in path: {source_path}")
+                return jekyll_root / '_posts' / source_path.name
                 
-            # Get filename without extension
-            filename = source_path.stem
+            # Get the filename without date parts
+            filename = source_path.name
             
-            # Convert spaces to hyphens and remove special characters
-            filename = re.sub(r'[^\w\s-]', '', filename)
-            filename = re.sub(r'[-\s]+', '-', filename).strip('-').lower()
+            # Clean the filename
+            clean_name = self._clean_filename(filename)
             
-            # Create Jekyll path
-            jekyll_filename = f"{date_prefix}-{filename}.md"
-            return jekyll_root / '_posts' / jekyll_filename
+            # Create Jekyll path with date prefix
+            date_str = '-'.join(date_parts)
+            jekyll_path = jekyll_root / '_posts' / f"{date_str}-{clean_name}"
+            
+            return jekyll_path
             
         except Exception as e:
             logger.error(f"Error converting path {source_path}: {e}")
-            raise ValueError(f"Failed to convert path: {e}") from e
+            raise
+            
+    def _clean_filename(self, filename: str) -> str:
+        """
+        Clean filename for Jekyll compatibility
+        
+        Args:
+            filename: Original filename
+            
+        Returns:
+            Cleaned filename
+        """
+        try:
+            # Remove file extension
+            name = Path(filename).stem
+            
+            # Replace spaces with hyphens
+            name = name.replace(' ', '-')
+            
+            # Remove special characters except hyphens and underscores
+            name = re.sub(r'[^\w\-]', '', name)
+            
+            # Convert to lowercase
+            name = name.lower()
+            
+            # Add .md extension
+            return f"{name}.md"
+            
+        except Exception as e:
+            logger.error(f"Error cleaning filename {filename}: {e}")
+            raise
