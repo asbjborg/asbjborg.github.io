@@ -31,7 +31,7 @@ class SyncEngineV2:
         # Initialize components
         self.detector = ChangeDetector(self.config)
         self.atomic = AtomicManager(self.config)
-        self.post_handler = PostHandler()
+        self.post_handler = PostHandler(self.config)
         self.media_handler = MediaHandler(self.config)
     
     def detect_changes(self) -> List[SyncState]:
@@ -102,28 +102,18 @@ class SyncEngineV2:
                     state.target_path.unlink()
                     
             elif state.operation in [SyncOperation.CREATE, SyncOperation.UPDATE]:
-                # Load source post
-                post = frontmatter.load(str(state.source_path))
-                
-                # Skip private posts
-                if self.post_handler.get_post_status(post) == PostStatus.PRIVATE:
-                    return
-                    
                 # Process post content
-                if state.sync_direction == SyncDirection.OBSIDIAN_TO_JEKYLL:
-                    processed = self.post_handler.process_for_jekyll(post)
-                else:
-                    processed = self.post_handler.process_for_obsidian(post)
+                processed = self.post_handler.process(
+                    state.source_path,
+                    state.target_path,
+                    state.sync_direction
+                )
                     
-                # Update modification time and sync status
-                processed.metadata['modified'] = time.time()
-                processed.metadata['synced'] = True
-                
                 # Ensure target directory exists
                 state.target_path.parent.mkdir(parents=True, exist_ok=True)
                 
                 # Write processed post
-                frontmatter.dump(processed, str(state.target_path))
+                state.target_path.write_text(processed)
                 
         except Exception as e:
             logger.error(f"Error syncing post {state.source_path}: {e}")
