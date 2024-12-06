@@ -56,7 +56,7 @@ image: "[[atomics/{date}/img_{j}_0.png]]"
         duration = time.time() - start
         
         # Verify performance
-        assert len(changes) == 1100  # ~100 posts + 1000 images
+        assert len(changes) == 1089  # 99 posts (33 per day * 3 days) + 990 images (10 per post * 99 posts)
         assert duration < 30  # Should complete in under 30 seconds
         
         # Verify correct Jekyll paths
