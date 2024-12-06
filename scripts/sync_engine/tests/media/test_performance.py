@@ -36,7 +36,7 @@ class TestMediaPerformance:
         for post_num in range(10):
             content = ["""---
 status: published
-image: "![[atomics/2024/01/15/featured.png]]"
+image: "[[atomics/2024/01/15/featured.png]]"
 ---
 # Post with many images
 """]

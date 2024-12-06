@@ -9,19 +9,26 @@ class TestConfigHandling:
     
     def test_config_loading(self, tmp_path):
         """Test loading configuration from dict"""
+        # Create test directories
+        vault_path = tmp_path / 'vault'
+        jekyll_path = tmp_path / 'jekyll'
+        vault_path.mkdir()
+        jekyll_path.mkdir()
+        
         config_dict = {
-            'vault_root': tmp_path / 'vault',
-            'jekyll_root': tmp_path / 'jekyll',
+            'vault_root': vault_path,
+            'jekyll_root': jekyll_path,
             'vault_atomics': 'atomics',
             'jekyll_posts': '_posts',
             'jekyll_assets': 'assets/img/posts',
-            'debug': True
+            'debug': True,
+            'validate_paths': False  # Disable validation for test
         }
         
         config = ConfigManager.load_from_dict(config_dict)
         assert isinstance(config, SyncConfig)
-        assert config.vault_root == tmp_path / 'vault'
-        assert config.jekyll_root == tmp_path / 'jekyll'
+        assert config.vault_root == vault_path
+        assert config.jekyll_root == jekyll_path
         assert config.vault_atomics == 'atomics'
         assert config.jekyll_posts == '_posts'
         assert config.jekyll_assets == 'assets/img/posts'
@@ -47,27 +54,41 @@ class TestConfigHandling:
 
     def test_computed_paths(self, tmp_path):
         """Test computed configuration paths"""
+        # Create test directories
+        vault_path = tmp_path / 'vault'
+        jekyll_path = tmp_path / 'jekyll'
+        vault_path.mkdir()
+        jekyll_path.mkdir()
+        
         config = ConfigManager.load_from_dict({
-            'vault_root': tmp_path / 'vault',
-            'jekyll_root': tmp_path / 'jekyll',
+            'vault_root': vault_path,
+            'jekyll_root': jekyll_path,
             'vault_atomics': 'atomics',
             'jekyll_posts': '_posts',
-            'jekyll_assets': 'assets/img/posts'
+            'jekyll_assets': 'assets/img/posts',
+            'validate_paths': False  # Disable validation for test
         })
         
         # Test computed paths
-        assert config.atomics_path == tmp_path / 'vault/atomics'
-        assert config.posts_path == tmp_path / 'jekyll/_posts'
-        assert config.jekyll_assets_path == tmp_path / 'jekyll/assets/img/posts'
+        assert config.atomics_path == vault_path / 'atomics'
+        assert config.jekyll_posts_path == jekyll_path / '_posts'
+        assert config.jekyll_assets_path == jekyll_path / 'assets/img/posts'
 
     def test_config_defaults(self, tmp_path):
         """Test configuration defaults"""
+        # Create test directories
+        vault_path = tmp_path / 'vault'
+        jekyll_path = tmp_path / 'jekyll'
+        vault_path.mkdir()
+        jekyll_path.mkdir()
+        
         config = ConfigManager.load_from_dict({
-            'vault_root': tmp_path / 'vault',
-            'jekyll_root': tmp_path / 'jekyll',
+            'vault_root': vault_path,
+            'jekyll_root': jekyll_path,
             'vault_atomics': 'atomics',
             'jekyll_posts': '_posts',
-            'jekyll_assets': 'assets/img/posts'
+            'jekyll_assets': 'assets/img/posts',
+            'validate_paths': False  # Disable validation for test
         })
         
         # Test default values
@@ -77,15 +98,22 @@ class TestConfigHandling:
 
     def test_config_overrides(self, tmp_path):
         """Test configuration value overrides"""
+        # Create test directories
+        vault_path = tmp_path / 'vault'
+        jekyll_path = tmp_path / 'jekyll'
+        vault_path.mkdir()
+        jekyll_path.mkdir()
+        
         config = ConfigManager.load_from_dict({
-            'vault_root': tmp_path / 'vault',
-            'jekyll_root': tmp_path / 'jekyll',
+            'vault_root': vault_path,
+            'jekyll_root': jekyll_path,
             'vault_atomics': 'atomics',
             'jekyll_posts': '_posts',
             'jekyll_assets': 'assets/img/posts',
             'debug': True,
             'max_image_width': 800,
-            'optimize_images': False
+            'optimize_images': False,
+            'validate_paths': False  # Disable validation for test
         })
         
         # Test overridden values

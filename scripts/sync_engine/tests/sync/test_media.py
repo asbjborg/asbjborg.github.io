@@ -2,6 +2,7 @@
 
 import pytest
 from pathlib import Path
+from PIL import Image
 from sync_engine.core.sync import SyncManager
 
 class TestSyncMedia:
@@ -14,20 +15,22 @@ class TestSyncMedia:
         # Create post with multiple images
         post_content = """---
 status: published
-image: ![[atomics/2024/01/15/featured.jpg]]
+image: "[[atomics/2024/01/15/featured.jpg]]"
 ---
 # Test Post
 
 Image 1: ![[atomics/2024/01/15/test1.png]]
 Image 2: ![[atomics/2024/01/15/test2.png]]
 """
-        post_path = atomic_path / 'media-test.md'
+        post_path = atomic_path / '2024/01/15/media-test.md'
+        post_path.parent.mkdir(parents=True, exist_ok=True)
         post_path.write_text(post_content)
         
         # Create test images in same folder
-        (atomic_path / 'featured.jpg').write_bytes(b'jpg data')
-        (atomic_path / 'test1.png').write_bytes(b'png1 data')
-        (atomic_path / 'test2.png').write_bytes(b'png2 data')
+        img = Image.new('RGB', (100, 100), color='red')
+        img.save(post_path.parent / 'featured.jpg', format='JPEG')
+        img.save(post_path.parent / 'test1.png')
+        img.save(post_path.parent / 'test2.png')
         
         # Run sync
         manager = SyncManager(test_config)

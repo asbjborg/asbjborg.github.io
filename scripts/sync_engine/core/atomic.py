@@ -8,14 +8,25 @@ import time
 from pathlib import Path
 from typing import Optional, List, Generator, Dict
 from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime
 
 from .types import SyncState, SyncOperation
 from .config import SyncConfig
 
 logger = logging.getLogger(__name__)
 
+@dataclass
 class AtomicOperation:
-    """Handles low-level atomic file operations"""
+    """Represents an atomic file operation"""
+    operation_type: SyncOperation
+    source_path: Optional[Path]
+    target_path: Path
+    state: SyncState = SyncState.PENDING
+    backup_path: Optional[Path] = None
+
+class AtomicUtils:
+    """Static utility methods for atomic operations"""
     
     @staticmethod
     @contextmanager
@@ -30,7 +41,7 @@ class AtomicOperation:
             Temporary path to write to
             
         Example:
-            with AtomicOperation.atomic_write(path) as tmp_path:
+            with AtomicUtils.atomic_write(path) as tmp_path:
                 with open(tmp_path, 'w') as f:
                     f.write('content')
         """
@@ -79,7 +90,7 @@ class AtomicOperation:
             Temporary path to write to
             
         Example:
-            with AtomicOperation.atomic_update(path) as tmp_path:
+            with AtomicUtils.atomic_update(path) as tmp_path:
                 with open(tmp_path, 'w') as f:
                     f.write('updated content')
         """
@@ -90,7 +101,7 @@ class AtomicOperation:
             shutil.copy2(target_path, backup_path)
         
         try:
-            with AtomicOperation.atomic_write(target_path) as tmp_path:
+            with AtomicUtils.atomic_write(target_path) as tmp_path:
                 yield tmp_path
                 if backup_path:
                     backup_path.unlink()
@@ -110,7 +121,7 @@ class AtomicOperation:
             target_path: Path to copy to
         """
         try:
-            with AtomicOperation.atomic_write(target_path) as tmp_path:
+            with AtomicUtils.atomic_write(target_path) as tmp_path:
                 shutil.copy2(source_path, tmp_path)
         except Exception as e:
             logger.error(f"Error copying {source_path} to {target_path}: {e}")
@@ -127,7 +138,7 @@ class AtomicOperation:
         """
         try:
             # First copy atomically
-            AtomicOperation.atomic_copy(source_path, target_path)
+            AtomicUtils.atomic_copy(source_path, target_path)
             # Then remove source
             source_path.unlink()
         except Exception as e:
@@ -178,7 +189,33 @@ class AtomicManager:
         self.backup_dir = Path(config.backup_dir if config else '.atomic_backups')
         self.backup_count = int(config.backup_count if config else 5)
         self.backup_dir.mkdir(exist_ok=True)
-        self.history = []
+        self.history: List[AtomicOperation] = []
+        
+    def execute_operation(self, operation: AtomicOperation) -> None:
+        """Execute a single atomic operation"""
+        try:
+            if operation.operation_type == SyncOperation.WRITE:
+                with AtomicUtils.atomic_write(operation.target_path) as tmp_path:
+                    shutil.copy2(operation.source_path, tmp_path)
+            elif operation.operation_type == SyncOperation.COPY:
+                AtomicUtils.atomic_copy(operation.source_path, operation.target_path)
+            elif operation.operation_type == SyncOperation.MOVE:
+                AtomicUtils.atomic_move(operation.source_path, operation.target_path)
+            elif operation.operation_type == SyncOperation.DELETE:
+                backup_path = AtomicUtils.atomic_delete(operation.target_path)
+                operation.backup_path = backup_path
+            
+            operation.state = SyncState.COMPLETED
+            self.history.append(operation)
+            
+        except Exception as e:
+            operation.state = SyncState.FAILED
+            logger.error(f"Operation failed: {e}")
+            raise
+        
+    def execute_batch(self, batch: 'AtomicBatch') -> None:
+        """Execute a batch of operations atomically"""
+        self._commit_batch(batch)
         
     def batch(self) -> 'AtomicBatch':
         """Create new atomic batch"""
@@ -225,11 +262,8 @@ class AtomicManager:
             
             # Execute operations
             for op in batch.operations:
-                self._execute_operation(op)
+                self.execute_operation(op)
                 
-            # Add to history
-            self.history.extend(batch.operations)
-            
             # Clean up old backups if needed
             if self.config and self.config.auto_cleanup:
                 self.cleanup_backups()
@@ -242,46 +276,93 @@ class AtomicManager:
     def _rollback_batch(self, batch: 'AtomicBatch'):
         """Rollback a batch of operations"""
         logger.info("Rolling back batch operations")
+        
+        # First restore any backups
         for path, backup in batch.backups.items():
             try:
                 if backup.exists():
                     shutil.copy2(backup, path)
             except Exception as e:
                 logger.error(f"Failed to restore {path} from {backup}: {e}")
-                
-    def _execute_operation(self, op: SyncState):
-        """Execute a single sync operation"""
-        if op.operation == SyncOperation.CREATE:
-            AtomicOperation.atomic_copy(op.source_path, op.target_path)
-        elif op.operation == SyncOperation.UPDATE:
-            with AtomicOperation.atomic_update(op.target_path) as tmp_path:
-                shutil.copy2(op.source_path, tmp_path)
-        elif op.operation == SyncOperation.DELETE:
-            AtomicOperation.atomic_delete(op.target_path)
+        
+        # Then remove any newly created files that didn't have backups
+        for op in batch.operations:
+            if op.target_path and op.target_path.exists():
+                if op.target_path not in batch.backups:
+                    try:
+                        op.target_path.unlink()
+                    except Exception as e:
+                        logger.error(f"Failed to remove {op.target_path}: {e}")
+    
+    def _backup(self, target_path: Path) -> None:
+        """Create backup of target file"""
+        if not target_path.exists():
+            return
+            
+        # Create backup directory
+        backup_dir = target_path.parent / '.atomic_backups'
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create backup with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_path = backup_dir / f"{target_path.name}.{timestamp}.bak"
+        
+        # Copy file to backup
+        import shutil
+        shutil.copy2(target_path, backup_path)
+        
+    def write(self, target_path: Path, content: str, make_backup: bool = True) -> None:
+        """Write content to file atomically"""
+        if make_backup:
+            self._backup(target_path)
+            
+        # Create parent directories
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Write to temp file first
+        temp_path = target_path.with_suffix(target_path.suffix + '.tmp')
+        temp_path.write_text(content)
+        
+        # Move temp file to target
+        temp_path.replace(target_path)
+        
+    def copy(self, source_path: Path, target_path: Path, make_backup: bool = True) -> None:
+        """Copy file atomically"""
+        try:
+            # Create parent directories
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Create backup if needed
+            if make_backup and target_path.exists():
+                self._backup(target_path)
+            
+            # Copy to temp file first
+            temp_path = target_path.with_suffix(target_path.suffix + '.tmp')
+            shutil.copy2(source_path, temp_path)
+            
+            # Move temp file to target
+            temp_path.replace(target_path)
+            
+            # Record operation
+            operation = AtomicOperation(
+                operation_type=SyncOperation.COPY,
+                source_path=source_path,
+                target_path=target_path,
+                state=SyncState.COMPLETED
+            )
+            self.history.append(operation)
+            
+        except Exception as e:
+            logger.error(f"Failed to copy {source_path} to {target_path}: {e}")
+            raise
 
+@dataclass
 class AtomicBatch:
     """Represents a batch of atomic operations"""
+    operations: List[AtomicOperation]
+    backups: Dict[Path, Path] = None
     
-    def __init__(self, manager: 'AtomicManager'):
-        """Initialize batch"""
-        self.manager = manager
-        self.operations = []
-        self.backups = {}
-        self.timestamp = time.time()
-        
-    def add(self, op: SyncState):
-        """Add operation to batch"""
-        self.operations.append(op)
-        
-    def __enter__(self):
-        """Enter context manager"""
-        return self
-        
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Exit context manager"""
-        if exc_type is None:
-            # Success - commit changes
-            self.manager._commit_batch(self)
-        else:
-            # Error - rollback changes
-            self.manager._rollback_batch(self)
+    def __post_init__(self):
+        """Initialize backups dict"""
+        if self.backups is None:
+            self.backups = {}

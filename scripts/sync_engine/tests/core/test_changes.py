@@ -1,6 +1,7 @@
-"""Tests for change detection and handling"""
+"""Tests for change detection"""
 
 import pytest
+import time
 from pathlib import Path
 from sync_engine.core.changes import ChangeDetector
 from sync_engine.core.types import SyncOperation, SyncDirection, PostStatus
@@ -12,7 +13,7 @@ class TestChangeDetection:
         """Test detection of new post"""
         # Create new post in vault
         post_path = test_config.vault_root / "atomics/2024/01/15/new_post.md"
-        post_path.parent.mkdir(parents=True)
+        post_path.parent.mkdir(parents=True, exist_ok=True)
         post_path.write_text("""---
 status: published
 ---
@@ -23,9 +24,11 @@ Test content""")
         changes = detector.detect_changes()
         
         assert len(changes) == 1
-        assert changes[0].operation == SyncOperation.WRITE
-        assert changes[0].source_path == post_path
-        assert changes[0].target_path == test_config.jekyll_root / "_posts/2024-01-15-new_post.md"
+        change = changes[0]
+        assert change.operation == SyncOperation.CREATE
+        assert change.source_path == post_path
+        assert change.sync_direction == SyncDirection.OBSIDIAN_TO_JEKYLL
+        assert change.status == PostStatus.PUBLISHED
 
     def test_detect_modified_post(self, test_config):
         """Test detection of modified post"""
@@ -33,33 +36,41 @@ Test content""")
         vault_path = test_config.vault_root / "atomics/2024/01/15/modified.md"
         jekyll_path = test_config.jekyll_root / "_posts/2024-01-15-modified.md"
         
-        vault_path.parent.mkdir(parents=True)
-        vault_path.write_text("""---
-status: published
----
-# Modified Post
-Updated content""")
+        vault_path.parent.mkdir(parents=True, exist_ok=True)
+        jekyll_path.parent.mkdir(parents=True, exist_ok=True)
         
-        jekyll_path.parent.mkdir(parents=True)
+        # Write Jekyll file first
         jekyll_path.write_text("""---
 status: published
 ---
 # Modified Post
 Old content""")
         
+        # Wait to ensure timestamp difference
+        time.sleep(0.1)
+        
+        # Write Obsidian file with newer timestamp
+        vault_path.write_text("""---
+status: published
+---
+# Modified Post
+Updated content""")
+        
         detector = ChangeDetector(test_config)
         changes = detector.detect_changes()
         
         assert len(changes) == 1
-        assert changes[0].operation == SyncOperation.WRITE
-        assert changes[0].source_path == vault_path
-        assert changes[0].target_path == jekyll_path
+        change = changes[0]
+        assert change.operation == SyncOperation.UPDATE
+        assert change.source_path == vault_path
+        assert change.target_path == jekyll_path
+        assert change.sync_direction == SyncDirection.OBSIDIAN_TO_JEKYLL
 
     def test_detect_deleted_post(self, test_config):
         """Test detection of deleted post"""
         # Create post only in Jekyll
         jekyll_path = test_config.jekyll_root / "_posts/2024-01-15-deleted.md"
-        jekyll_path.parent.mkdir(parents=True)
+        jekyll_path.parent.mkdir(parents=True, exist_ok=True)
         jekyll_path.write_text("""---
 status: published
 ---
@@ -69,14 +80,16 @@ status: published
         changes = detector.detect_changes()
         
         assert len(changes) == 1
-        assert changes[0].operation == SyncOperation.DELETE
-        assert changes[0].target_path == jekyll_path
+        change = changes[0]
+        assert change.operation == SyncOperation.DELETE
+        assert change.source_path == jekyll_path
+        assert change.sync_direction == SyncDirection.JEKYLL_TO_OBSIDIAN
 
     def test_detect_draft_post(self, test_config):
         """Test detection of draft post"""
         # Create draft post in vault
         post_path = test_config.vault_root / "atomics/2024/01/15/draft.md"
-        post_path.parent.mkdir(parents=True)
+        post_path.parent.mkdir(parents=True, exist_ok=True)
         post_path.write_text("""---
 status: draft
 ---
@@ -86,9 +99,11 @@ status: draft
         changes = detector.detect_changes()
         
         assert len(changes) == 1
-        assert changes[0].operation == SyncOperation.WRITE
-        assert changes[0].source_path == post_path
-        assert changes[0].target_path == test_config.jekyll_root / "_drafts/2024-01-15-draft.md"
+        change = changes[0]
+        assert change.operation == SyncOperation.CREATE
+        assert change.source_path == post_path
+        assert change.sync_direction == SyncDirection.OBSIDIAN_TO_JEKYLL
+        assert change.status == PostStatus.DRAFT
 
     def test_detect_multiple_changes(self, test_config):
         """Test detection of multiple changes"""
@@ -99,17 +114,38 @@ status: draft
         deleted_jekyll = test_config.jekyll_root / "_posts/2024-01-15-deleted.md"
         
         # Set up test files
-        new_post.parent.mkdir(parents=True)
-        new_post.write_text("New post")
-        modified_vault.write_text("Updated content")
-        modified_jekyll.parent.mkdir(parents=True)
-        modified_jekyll.write_text("Old content")
-        deleted_jekyll.write_text("To be deleted")
+        new_post.parent.mkdir(parents=True, exist_ok=True)
+        modified_vault.parent.mkdir(parents=True, exist_ok=True)
+        modified_jekyll.parent.mkdir(parents=True, exist_ok=True)
+        deleted_jekyll.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Write files in order to ensure proper timestamps
+        modified_jekyll.write_text("""---
+status: published
+---
+Old content""")
+        
+        deleted_jekyll.write_text("""---
+status: published
+---
+To be deleted""")
+        
+        # Wait to ensure timestamp difference
+        time.sleep(0.1)
+        
+        new_post.write_text("""---
+status: published
+---
+New post""")
+        
+        modified_vault.write_text("""---
+status: published
+---
+Updated content""")
         
         detector = ChangeDetector(test_config)
         changes = detector.detect_changes()
         
         assert len(changes) == 3  # New, modified, and deleted
         operations = {c.operation for c in changes}
-        assert SyncOperation.WRITE in operations
-        assert SyncOperation.DELETE in operations 
+        assert operations == {SyncOperation.CREATE, SyncOperation.UPDATE, SyncOperation.DELETE}

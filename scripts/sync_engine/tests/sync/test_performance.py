@@ -3,6 +3,7 @@
 import pytest
 import time
 from pathlib import Path
+from PIL import Image
 from sync_engine.core.sync import SyncManager
 
 class TestSyncPerformance:
@@ -19,16 +20,19 @@ class TestSyncPerformance:
             "2024/01/17",
         ]
         
+        # Create test image once and reuse
+        test_img = Image.new('RGB', (100, 100), color='red')
+        
         # Create many posts and images across different dates
         for i, date in enumerate(dates):
-            date_path = vault_root / 'atomics' / date
+            date_path = atomic_path / date
             date_path.mkdir(parents=True, exist_ok=True)
             
             # Create posts for this date
             for j in range(33):  # 33 posts per day = ~100 posts
                 post_content = f"""---
 status: published
-image: ![[atomics/{date}/img_{j}_0.png]]
+image: "[[atomics/{date}/img_{j}_0.png]]"
 ---
 # Post {i}_{j}
 
@@ -43,7 +47,7 @@ image: ![[atomics/{date}/img_{j}_0.png]]
                 
                 # Create images in same folder
                 for k in range(10):
-                    (date_path / f'img_{j}_{k}.png').write_bytes(b'test')
+                    test_img.save(date_path / f'img_{j}_{k}.png')
         
         # Time the sync
         start = time.time()

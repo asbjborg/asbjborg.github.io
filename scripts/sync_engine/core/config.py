@@ -21,6 +21,7 @@ class SyncConfig:
     debug: bool = False
     continue_on_error: bool = False
     auto_cleanup: bool = True
+    validate_paths: bool = True
     
     # Media settings
     optimize_images: bool = True
@@ -39,25 +40,26 @@ class SyncConfig:
         """Convert paths and set computed fields"""
         # Convert string paths to Path objects
         if isinstance(self.vault_root, str):
-            self.vault_root = Path(self.vault_root)
+            self.vault_root = Path(self.vault_root).resolve()
         if isinstance(self.jekyll_root, str):
-            self.jekyll_root = Path(self.jekyll_root)
+            self.jekyll_root = Path(self.jekyll_root).resolve()
             
         # Set computed paths
         self.atomics_path = self.vault_root / self.vault_atomics
         self.jekyll_posts_path = self.jekyll_root / self.jekyll_posts
         self.jekyll_assets_path = self.jekyll_root / self.jekyll_assets
         
-        # Validate paths
-        if not self.vault_root.exists():
-            raise ValueError(f"Vault root not found: {self.vault_root}")
-        if not self.jekyll_root.exists():
-            raise ValueError(f"Jekyll root not found: {self.jekyll_root}")
-            
-        # Create required directories
-        self.atomics_path.mkdir(parents=True, exist_ok=True)
-        self.jekyll_posts_path.mkdir(parents=True, exist_ok=True)
-        self.jekyll_assets_path.mkdir(parents=True, exist_ok=True)
+        # Validate paths if enabled
+        if self.validate_paths:
+            if not self.vault_root.exists():
+                raise ValueError(f"Vault root not found: {self.vault_root}")
+            if not self.jekyll_root.exists():
+                raise ValueError(f"Jekyll root not found: {self.jekyll_root}")
+                
+            # Create required directories
+            self.atomics_path.mkdir(parents=True, exist_ok=True)
+            self.jekyll_posts_path.mkdir(parents=True, exist_ok=True)
+            self.jekyll_assets_path.mkdir(parents=True, exist_ok=True)
 
 class ConfigManager:
     """Configuration management utilities"""
@@ -96,6 +98,6 @@ class ConfigManager:
         required = {'vault_root', 'jekyll_root'}
         if not all(k in config for k in required):
             missing = required - set(config.keys())
-            raise ValueError(f"Missing required config keys: {missing}")
+            raise ValueError(f"Missing required configuration keys: {missing}")
             
         return SyncConfig(**config)

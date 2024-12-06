@@ -16,6 +16,9 @@ class SyncOperation(Enum):
     CREATE = auto()
     UPDATE = auto()
     DELETE = auto()
+    WRITE = auto()
+    COPY = auto()
+    MOVE = auto()
 
 class SyncDirection(Enum):
     """Sync direction enum"""
@@ -23,12 +26,20 @@ class SyncDirection(Enum):
     JEKYLL_TO_OBSIDIAN = auto()
     NONE = auto()
 
+class SyncState(Enum):
+    """Sync state enum"""
+    PENDING = auto()
+    COMPLETED = auto()
+    FAILED = auto()
+    ROLLED_BACK = auto()
+
 @dataclass
-class SyncState:
-    """Represents the state of a sync operation"""
+class FileChange:
+    """Represents a file change operation"""
     operation: SyncOperation
     source_path: Path
     target_path: Optional[Path]
     sync_direction: SyncDirection = SyncDirection.OBSIDIAN_TO_JEKYLL
     status: Optional[PostStatus] = None
+    state: SyncState = SyncState.PENDING
     last_modified: Optional[float] = None 

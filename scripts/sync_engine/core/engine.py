@@ -10,7 +10,7 @@ import frontmatter
 from .types import SyncState, SyncOperation, SyncDirection, PostStatus
 from .config import SyncConfig
 from .changes import ChangeDetector
-from .atomic import AtomicOperation
+from .atomic import AtomicManager
 from ..handlers.media import MediaHandler
 from ..handlers.post import PostHandler
 
@@ -30,7 +30,7 @@ class SyncEngineV2:
         
         # Initialize components
         self.detector = ChangeDetector(self.config)
-        self.atomic = AtomicOperation(self.config)
+        self.atomic = AtomicManager(self.config)
         self.post_handler = PostHandler()
         self.media_handler = MediaHandler(self.config)
     
