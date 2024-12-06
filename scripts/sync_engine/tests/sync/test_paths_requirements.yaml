@@ -1,0 +1,40 @@
+test_complex_paths:
+  features:
+    - "Path normalization"
+    - "Unicode handling"
+    - "Special character handling"
+    - "Long filename support"
+  edge_cases:
+    - "Filenames with spaces"
+    - "Unicode characters in paths"
+    - "Very long filenames (>255 chars)"
+    - "Special characters (#, %, etc.)"
+    - "Mixed forward/backslashes"
+  dependencies:
+    - "PostHandler"
+    - "MediaHandler"
+    - "AtomicManager"
+  expected_coverage: 90.0
+  description: >
+    Tests handling of complex file paths including Unicode characters,
+    special characters, and very long filenames. Verifies proper path
+    normalization and conversion between Obsidian and Jekyll formats.
+
+test_path_normalization:
+  features:
+    - "Path normalization"
+    - "Path validation"
+    - "Path conversion"
+  edge_cases:
+    - "Relative paths"
+    - "Absolute paths"
+    - "Parent directory references (../)"
+    - "Double slashes"
+  dependencies:
+    - "PostHandler"
+    - "MediaHandler"
+  expected_coverage: 85.0
+  description: >
+    Tests path normalization functionality to ensure consistent path
+    handling regardless of input format. Verifies proper handling of
+    relative/absolute paths and path cleanup. 
