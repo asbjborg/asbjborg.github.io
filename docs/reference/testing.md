@@ -8,6 +8,7 @@ The sync engine uses pytest for testing and follows a comprehensive testing stra
 ```
 tests/
 ├── conftest.py         # Shared fixtures
+├── requirements.py     # Test requirements system
 ├── test_all.py         # Main test runner
 ├── test_media.py       # Media test collector
 ├── test_sync.py        # Sync test collector
@@ -18,7 +19,9 @@ tests/
 │   ├── test_cleanup.py   # Cleanup tests
 │   ├── test_media.py     # Media sync tests
 │   ├── test_paths.py     # Path handling
-│   └── test_sync_performance.py # Performance tests
+│   ├── test_sync_performance.py # Performance tests
+│   ├── test_paths_requirements.yaml      # Path test requirements
+│   └── test_sync_performance_requirements.yaml  # Performance test requirements
 ├── media/
 │   ├── test_processing.py # Image processing
 │   ├── test_references.py # Media references
@@ -27,6 +30,69 @@ tests/
 └── handlers/
     ├── test_post.py      # Post handler tests
     └── test_media.py     # Media handler tests
+```
+
+## Test Requirements
+
+### Overview
+Each test module can have an accompanying YAML file that defines its requirements, edge cases, and dependencies. This helps with:
+- Documenting test coverage
+- Tracking dependencies between components
+- Ensuring edge cases are tested
+- Maintaining test quality
+
+### Requirements File Structure
+```yaml
+test_name:
+  features:
+    - "Feature 1"
+    - "Feature 2"
+  edge_cases:
+    - "Edge case 1"
+    - "Edge case 2"
+  dependencies:
+    - "Component 1"
+    - "Component 2"
+  expected_coverage: 85.0
+  description: >
+    Detailed description of what the test covers
+    and why it's important.
+```
+
+### Using Requirements
+Requirements can be specified in two ways:
+
+1. YAML File:
+```yaml
+# test_module_requirements.yaml
+test_complex_paths:
+  features: ["Path normalization", "Unicode handling"]
+  edge_cases: ["Very long filenames", "Special characters"]
+  dependencies: ["PostHandler", "MediaHandler"]
+  expected_coverage: 90.0
+  description: "Tests complex path handling scenarios"
+```
+
+2. Decorator:
+```python
+@test_requirements(
+    features=["Path normalization", "Unicode handling"],
+    edge_cases=["Very long filenames", "Special characters"],
+    dependencies=["PostHandler", "MediaHandler"],
+    expected_coverage=90.0,
+    description="Tests complex path handling scenarios"
+)
+def test_complex_paths():
+    # Test implementation
+```
+
+### Running Tests with Requirements
+```bash
+# Run tests for a specific feature
+pytest -m "requirement('Path normalization')"
+
+# Run tests with specific dependencies
+pytest -m "requirement('PostHandler')"
 ```
 
 ## Running Tests
