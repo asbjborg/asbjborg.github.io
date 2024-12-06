@@ -10,7 +10,7 @@ class TestSyncPaths:
     
     def test_complex_paths(self, test_config, setup_dirs):
         """Test handling of complex file paths"""
-        vault_root, jekyll_path, atomic_path = setup_dirs
+        vault_root, jekyll_root, atomic_path = setup_dirs
         
         # Create date directory
         date_dir = atomic_path / '2024/01/15'
@@ -56,7 +56,7 @@ image: "[[atomics/2024/01/15/image with spaces.png]]"
         assert len(changes) == 5  # 1 post + 4 images
         
         # Verify files exist in Jekyll
-        assert (jekyll_path / '_posts/2024-01-15-complex-post-with-spaces.md').exists()
+        assert (jekyll_root / '_posts/2024-01-15-complex-post-with-spaces.md').exists()
         for change in changes:
             if change.target_path:
                 assert change.target_path.exists() 
