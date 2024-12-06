@@ -28,7 +28,7 @@ class ChangeDetector:
     def __init__(self, config: SyncConfig):
         """Initialize change detector"""
         self.config = config
-        self.post_handler = PostHandler()
+        self.post_handler = PostHandler(config)
         self.media_handler = MediaHandler(config)
         
         # Initialize paths
@@ -248,14 +248,20 @@ class ChangeDetector:
         # Find changes
         for key, obsidian_state in obsidian_lookup.items():
             if key in jekyll_lookup:
+                # Post exists in both - check if modified
                 jekyll_state = jekyll_lookup[key]
                 if obsidian_state.last_modified > jekyll_state.last_modified:
+                    obsidian_state.operation = SyncOperation.UPDATE
                     changes.append(obsidian_state)
             else:
+                # Post only in Obsidian - create in Jekyll
                 changes.append(obsidian_state)
                 
+        # Find deleted posts (only in Jekyll)
         for key, jekyll_state in jekyll_lookup.items():
             if key not in obsidian_lookup:
+                # Post only in Jekyll - delete it
+                jekyll_state.operation = SyncOperation.DELETE
                 changes.append(jekyll_state)
                 
         return changes
