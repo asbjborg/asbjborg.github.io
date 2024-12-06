@@ -231,145 +231,127 @@ class MediaHandler:
             Jekyll-compatible path
         """
         try:
-            # Generate content hash for uniqueness
-            file_hash = hashlib.md5(original_path.read_bytes()).hexdigest()[:8]
-            
             # Get relative path from vault root
             rel_path = original_path.relative_to(self.vault_root)
             
-            # Clean filename parts
-            clean_parts = []
-            for part in rel_path.parts:
-                # Skip common parent directories
-                if part in {'atomics', 'attachments'}:
-                    continue
-                    
-                # Split extension from last part
-                if part == rel_path.parts[-1]:
-                    base, ext = os.path.splitext(part)
-                else:
-                    base, ext = part, ''
-                
-                # Clean part name
-                clean_part = base.lower()
-                # Normalize unicode to closest ASCII equivalent
-                clean_part = clean_part.replace('é', 'e')  # Common replacements
-                clean_part = clean_part.replace('è', 'e')
-                clean_part = clean_part.replace('ê', 'e')
-                clean_part = clean_part.replace('ë', 'e')
-                clean_part = clean_part.replace('à', 'a')
-                clean_part = clean_part.replace('â', 'a')
-                clean_part = clean_part.replace('ä', 'a')
-                clean_part = clean_part.replace('ô', 'o')
-                clean_part = clean_part.replace('û', 'u')
-                clean_part = clean_part.replace('ü', 'u')
-                # Then remove any remaining non-ASCII
-                clean_part = clean_part.encode('ascii', 'ignore').decode()
-                # Replace spaces and special chars with dashes
-                clean_part = re.sub(r'[^a-z0-9]+', '-', clean_part)
-                # Remove leading/trailing dashes
-                clean_part = clean_part.strip('-')
-                # Collapse multiple dashes
-                clean_part = re.sub(r'-+', '-', clean_part)
-                
-                if clean_part:  # Only add non-empty parts
-                    clean_parts.append(clean_part)
+            # Get filename and clean it
+            filename = rel_path.name
+            base, ext = os.path.splitext(filename)
+            clean_base = re.sub(r'[^\w\s-]', '', base)
+            clean_base = re.sub(r'[-\s]+', '-', clean_base).strip('-').lower()
             
-            # Combine parts with hash
-            stem = '-'.join(clean_parts[:-1]) if len(clean_parts) > 1 else ''
-            name = clean_parts[-1]
-            if stem:
-                new_name = f"{stem}-{name}"
-            else:
-                new_name = name
-            
-            # Get original extension
-            _, ext = os.path.splitext(rel_path.name)
-            
-            # Ensure base is not too long
-            if len(new_name) > 80:  # Leave room for hash and extension
-                new_name = new_name[:77] + '...'
-            
-            # Add hash and extension
-            new_filename = f"{new_name}-{file_hash}{ext}"
-            
-            return self.jekyll_assets / new_filename
+            # Return Jekyll assets path
+            return self.jekyll_assets / f"{clean_base}{ext}"
             
         except Exception as e:
-            logger.error(f"Error generating Jekyll path: {e}")
-            raise
+            logger.error(f"Error generating Jekyll path for {original_path}: {e}")
+            raise ValueError(f"Failed to generate Jekyll path: {e}") from e
     
+    def sync_media(self, source_path: Path) -> Optional[Path]:
+        """
+        Sync a media file to Jekyll assets
+        
+        Args:
+            source_path: Source media file path
+            
+        Returns:
+            Target path in Jekyll assets
+        """
+        try:
+            # Get Jekyll path
+            target_path = self.get_jekyll_media_path(source_path)
+            
+            # Create parent directories
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Process image if needed
+            if source_path.suffix.lower() in self.SUPPORTED_FORMATS:
+                self.process_image(source_path, target_path)
+            else:
+                # Copy non-image files directly
+                shutil.copy2(source_path, target_path)
+            
+            return target_path
+            
+        except Exception as e:
+            logger.error(f"Failed to sync media file {source_path}: {e}")
+            raise MediaError(f"Failed to sync media: {e}") from e
+            
     def process_media_file(self, file_path: Path) -> Optional[str]:
         """
-        Process media file and copy to Jekyll assets
+        Process a media file and return its new path
         
         Args:
             file_path: Path to media file
             
         Returns:
-            Jekyll path to media file or None if failed
+            New path as string or None if failed
         """
         try:
+            # Skip if already processed
             if file_path in self.processed_files:
                 return self.path_mapping.get(str(file_path))
-            
+                
+            # Get Jekyll path
             target_path = self.get_jekyll_media_path(file_path)
             
-            # Process images, copy other files directly
-            if file_path.suffix.lower() in self.image_extensions:
-                try:
-                    self.process_image(file_path, target_path)
-                except (InvalidImageError, UnsupportedFormatError) as e:
-                    # For test files or non-image files, just copy
-                    shutil.copy2(file_path, target_path)
+            # Process file
+            if file_path.suffix.lower() in self.SUPPORTED_FORMATS:
+                self.process_image(file_path, target_path)
             else:
+                # Copy non-image files directly
                 shutil.copy2(file_path, target_path)
-            
-            # Track processed file
+                
+            # Update tracking
             self.processed_files.add(file_path)
-            jekyll_path = f"/assets/img/posts/{target_path.name}"
-            self.path_mapping[str(file_path)] = jekyll_path
+            self.path_mapping[str(file_path)] = str(target_path)
             
-            return jekyll_path
+            return str(target_path)
             
         except Exception as e:
-            logger.error(f"Error processing media file {file_path}: {e}")
+            logger.error(f"Failed to process media file {file_path}: {e}")
             return None
-    
-    def process_content(self, content: str) -> str:
+            
+    def update_references(self, content: str) -> str:
         """
-        Process content and handle all media references
+        Update media references in content
         
         Args:
-            content: Post content to process
+            content: Content with media references
             
         Returns:
-            Processed content with updated media references
+            Content with updated references
         """
         try:
-            # Get all media references
+            # Get all references
             references = self.get_media_references(content)
             
             # Process each reference
             for ref in references:
-                media_path = self.resolve_media_path(ref)
-                if not media_path:
+                try:
+                    # Resolve actual file path
+                    file_path = self.resolve_media_path(ref)
+                    if not file_path:
+                        continue
+                        
+                    # Process media file
+                    new_path = self.process_media_file(file_path)
+                    if not new_path:
+                        continue
+                        
+                    # Update reference in content
+                    old_ref = f"![[{ref}]]"
+                    new_ref = f"![](/assets/img/posts/{Path(new_path).name})"
+                    content = content.replace(old_ref, new_ref)
+                    
+                except (ValueError, FileNotFoundError) as e:
+                    logger.warning(f"Skipping invalid reference '{ref}': {e}")
                     continue
-                
-                # Process media file
-                jekyll_path = self.process_media_file(media_path)
-                if not jekyll_path:
-                    continue
-                
-                # Replace in content
-                # Handle both ![[ref]] and [[ref]] patterns
-                content = content.replace(f"![[{ref}]]", f"![{ref}]({jekyll_path})")
-                content = content.replace(f"[[{ref}]]", f"[{ref}]({jekyll_path})")
-            
+                    
             return content
             
         except Exception as e:
-            logger.error(f"Error processing content for media: {e}")
+            logger.error(f"Failed to update references: {e}")
             return content
     
     def cleanup_unused_assets(self, used_paths: Set[str]):
@@ -557,72 +539,3 @@ class MediaHandler:
             return self.config.vault_root / ref
         else:
             return self.config.vault_root / 'atomics' / ref
-    
-    def sync_media(self, source_path: Path) -> Path:
-        """
-        Sync media file to Jekyll assets directory
-        
-        Args:
-            source_path: Source media file path
-            
-        Returns:
-            Path to synced file in Jekyll assets
-        """
-        try:
-            logger.debug(f"Starting media sync for {source_path}")
-            logger.debug(f"Source file exists: {source_path.exists()}")
-            logger.debug(f"Source file size: {source_path.stat().st_size}")
-            
-            # Validate image
-            logger.debug("Validating image...")
-            self.validate_image(source_path)
-            logger.debug("Image validation successful")
-            
-            # Get Jekyll path
-            logger.debug("Generating Jekyll path...")
-            target_path = self.get_jekyll_media_path(source_path)
-            logger.debug(f"Generated target path: {target_path}")
-            
-            # Create parent directory
-            logger.debug(f"Creating parent directory: {target_path.parent}")
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            logger.debug(f"Parent directory created and exists: {target_path.parent.exists()}")
-            
-            # Create temporary file with unique name
-            tmp_path = target_path.with_name(f".{target_path.name}.{os.getpid()}.tmp")
-            logger.debug(f"Using temporary path: {tmp_path}")
-            
-            try:
-                # Copy file with explicit binary mode
-                logger.debug("Copying file...")
-                with open(source_path, 'rb') as src, open(tmp_path, 'wb') as dst:
-                    shutil.copyfileobj(src, dst)
-                logger.debug(f"File copied to temp, exists: {tmp_path.exists()}, size: {tmp_path.stat().st_size}")
-                
-                # Ensure temp file has correct permissions
-                tmp_path.chmod(0o644)
-                logger.debug(f"Set temp file permissions: {oct(tmp_path.stat().st_mode)}")
-                
-                # Use os.replace for atomic move
-                logger.debug("Moving file to target...")
-                os.replace(str(tmp_path), str(target_path))
-                logger.debug(f"File moved to target, exists: {target_path.exists()}")
-                
-                if not target_path.exists():
-                    raise FileNotFoundError(f"Target file does not exist after move: {target_path}")
-                
-                logger.debug(f"Final file check - exists: {target_path.exists()}, size: {target_path.stat().st_size}")
-                
-            except Exception as e:
-                logger.error(f"Error during file copy: {e}")
-                if tmp_path.exists():
-                    logger.debug(f"Cleaning up temp file: {tmp_path}")
-                    tmp_path.unlink()
-                raise
-            
-            logger.info(f"Successfully synced media file from {source_path} to {target_path}")
-            return target_path
-            
-        except Exception as e:
-            logger.error(f"Failed to sync media file {source_path}: {e}")
-            raise
