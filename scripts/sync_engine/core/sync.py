@@ -35,7 +35,7 @@ class SyncManager:
         # Initialize components
         self.atomic = AtomicManager(self.config)
         self.changes = ChangeDetector(self.config)
-        self.post_handler = PostHandler()
+        self.post_handler = PostHandler(self.config)
         self.media_handler = MediaHandler(self.config)
         
         logger.info("SyncManager initialized successfully")
@@ -140,7 +140,7 @@ class SyncManager:
                     )
                     logger.debug(f"Target Jekyll path: {target_path}")
                     
-                    # Create _posts directory if it doesn't exist
+                    # Create parent directories
                     target_path.parent.mkdir(parents=True, exist_ok=True)
                     
                     # Process post
