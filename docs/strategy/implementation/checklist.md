@@ -61,24 +61,24 @@
   - [x] media.py: Media handling
 - [x] Tests
   - [x] Core Tests
-    - [x] test_atomic.py: File operations
+    - [x] test_atomic.py: Atomic operations
     - [x] test_changes.py: Change detection
     - [x] test_config.py: Configuration handling
   - [x] Media Tests
     - [x] test_processing.py: Image processing
-    - [x] test_sync.py: Media sync operations
-    - [x] test_references.py: Media reference handling
-    - [x] test_errors.py: Media error cases
-    - [x] test_performance.py: Media performance
+    - [x] test_references.py: Media references
+    - [x] test_media_errors.py: Media error cases
+    - [x] test_media_performance.py: Media performance
   - [x] Sync Tests
     - [x] test_basic.py: Basic sync operations
-    - [x] test_errors.py: Error handling
+    - [x] test_sync_errors.py: Error handling
     - [x] test_cleanup.py: Cleanup operations
-    - [x] test_media.py: Media handling in sync
+    - [x] test_media.py: Media handling
     - [x] test_paths.py: Path handling
-    - [x] test_performance.py: Performance testing
+    - [x] test_sync_performance.py: Performance testing
   - [x] Handler Tests
-    - [x] test_post.py: Post handling and processing
+    - [x] test_post.py: Post handling
+    - [x] test_media.py: Media handling
   - [x] Test Organization
     - [x] Collector files for each category
     - [x] Main test collector (test_all.py)

@@ -3,39 +3,30 @@
 ## Overview
 The sync engine uses pytest for testing and follows a comprehensive testing strategy covering unit tests, integration tests, and end-to-end scenarios.
 
-## Test Structure
+## File Structure
 
 ```
-scripts/sync_engine/tests/
-├── test_all.py              # Main test collector
-├── test_core.py             # Core test collector
-├── test_handlers.py         # Handlers test collector
-├── test_sync.py             # Sync test collector
-├── test_media.py            # Media test collector
-├── conftest.py             # Shared fixtures
-│
-├── core/                   # Core test modules
-│   ├── test_atomic.py     # Atomic operations
-│   ├── test_changes.py    # Change detection
-│   └── test_config.py     # Configuration handling
-│
-├── handlers/               # Handler test modules
-│   └── test_post.py       # Post handling
-│
-├── sync/                   # Sync test modules
-│   ├── test_basic.py      # Basic sync operations
-│   ├── test_errors.py     # Error handling
-│   ├── test_cleanup.py    # Cleanup operations
-│   ├── test_media.py      # Media handling in sync
-│   ├── test_paths.py      # Path handling
-│   └── test_performance.py # Performance tests
-│
-└── media/                  # Media test modules
-    ├── test_processing.py # Image processing
-    ├── test_sync.py       # Media sync operations
-    ├── test_references.py # Media reference handling
-    ├── test_errors.py     # Media error cases
-    └── test_performance.py # Media performance tests
+tests/
+├── conftest.py         # Shared fixtures
+├── test_all.py         # Main test runner
+├── test_media.py       # Media test collector
+├── test_sync.py        # Sync test collector
+├── test_handlers.py    # Handler test collector
+├── sync/
+│   ├── test_basic.py     # Basic sync tests
+│   ├── test_sync_errors.py     # Error handling
+│   ├── test_cleanup.py   # Cleanup tests
+│   ├── test_media.py     # Media sync tests
+│   ├── test_paths.py     # Path handling
+│   └── test_sync_performance.py # Performance tests
+├── media/
+│   ├── test_processing.py # Image processing
+│   ├── test_references.py # Media references
+│   ├── test_media_errors.py     # Media error cases
+│   └── test_media_performance.py # Media performance tests
+└── handlers/
+    ├── test_post.py      # Post handler tests
+    └── test_media.py     # Media handler tests
 ```
 
 ## Running Tests
@@ -43,20 +34,20 @@ scripts/sync_engine/tests/
 ### Basic Usage
 ```bash
 # Run all tests
-pytest scripts/sync_engine/tests/
+pytest tests/
 
 # Run specific test category
-pytest scripts/sync_engine/tests/test_core.py   # All core tests
-pytest scripts/sync_engine/tests/test_sync.py   # All sync tests
-pytest scripts/sync_engine/tests/test_media.py  # All media tests
-pytest scripts/sync_engine/tests/test_handlers.py # All handler tests
+pytest tests/test_core.py   # All core tests
+pytest tests/test_sync.py   # All sync tests
+pytest tests/test_media.py  # All media tests
+pytest tests/test_handlers.py # All handler tests
 
 # Run specific test module
-pytest scripts/sync_engine/tests/sync/test_basic.py
-pytest scripts/sync_engine/tests/media/test_processing.py
+pytest tests/sync/test_basic.py
+pytest tests/media/test_processing.py
 
 # Run with coverage
-pytest --cov=sync_engine scripts/sync_engine/tests/
+pytest --cov=sync_engine tests/
 ```
 
 ### Test Categories
