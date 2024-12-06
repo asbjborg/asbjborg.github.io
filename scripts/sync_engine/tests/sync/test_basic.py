@@ -1,4 +1,11 @@
-"""Tests for basic sync functionality"""
+"""Tests for basic sync functionality.
+
+This module tests:
+- Basic sync operations (posts and images)
+- Engine initialization and setup
+- Empty state handling
+- File system interactions
+"""
 
 import pytest
 import os
@@ -13,7 +20,14 @@ class TestBasicSync:
     """Tests for basic sync functionality"""
     
     def test_basic_sync(self, test_config, setup_dirs):
-        """Test basic sync operation"""
+        """Test basic sync operation.
+        
+        Features tested:
+        - Sync operations: Post and image sync
+        - Path handling: Daily folder structure
+        - File operations: Content preservation
+        - Debug logging: Directory structure and permissions
+        """
         vault_root, jekyll_path, atomic_path = setup_dirs
         
         # Disable auto cleanup for this test
@@ -70,7 +84,13 @@ Here's an image: ![[atomics/2024/01/15/test.png]]
         assert img_change.target_path.exists()
 
     def test_engine_initialization(self, test_config):
-        """Test engine initialization"""
+        """Test engine initialization.
+        
+        Features tested:
+        - Engine setup: Component initialization
+        - Configuration: Config validation
+        - Component integration: Handler setup
+        """
         engine = SyncEngineV2(test_config)
         assert isinstance(engine.config, SyncConfig)
         assert engine.detector is not None
@@ -79,7 +99,13 @@ Here's an image: ![[atomics/2024/01/15/test.png]]
         assert engine.media_handler is not None
 
     def test_detect_changes_empty(self, test_config):
-        """Test change detection with empty directories"""
+        """Test change detection with empty directories.
+        
+        Features tested:
+        - Change detection: Empty state handling
+        - Directory scanning: Empty directory handling
+        - Performance: Quick return for no changes
+        """
         engine = SyncEngineV2(test_config)
         changes = engine.detect_changes()
         assert len(changes) == 0 

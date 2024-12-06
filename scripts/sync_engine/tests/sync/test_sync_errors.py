@@ -1,4 +1,11 @@
-"""Tests for sync error handling"""
+"""Tests for sync error handling.
+
+This module tests:
+- Error handling (invalid files, simulated errors)
+- Partial sync (valid files with invalid ones)
+- Atomic rollback (error recovery)
+- State verification (post-error checks)
+"""
 
 import pytest
 from pathlib import Path
@@ -8,7 +15,14 @@ class TestSyncErrors:
     """Tests for sync error handling"""
     
     def test_sync_with_errors(self, test_config, setup_dirs):
-        """Test sync with some errors"""
+        """Test sync with some errors.
+        
+        Features tested:
+        - Error handling: Invalid frontmatter
+        - Partial sync: Valid file processing
+        - Error recovery: Continue on error
+        - Verification: Successful file sync
+        """
         vault_root, jekyll_path, atomic_path = setup_dirs
         
         # Create valid post
@@ -32,7 +46,14 @@ Valid post""")
         assert (jekyll_path / '_posts/2024-01-15-valid-note.md').exists()
 
     def test_atomic_rollback(self, test_config, setup_dirs):
-        """Test atomic rollback on error"""
+        """Test atomic rollback on error.
+        
+        Features tested:
+        - Error handling: Simulated media error
+        - Atomic operations: Complete rollback
+        - Error recovery: Clean state after error
+        - Verification: No partial files
+        """
         vault_root, jekyll_path, atomic_path = setup_dirs
         
         # Create post and image

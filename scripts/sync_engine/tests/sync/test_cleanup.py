@@ -1,4 +1,11 @@
-"""Tests for sync cleanup functionality"""
+"""Tests for sync cleanup functionality.
+
+This module tests:
+- Cleanup operations (unused files)
+- Backup management (old backups)
+- File verification (existence checks)
+- Resource management (cleanup timing)
+"""
 
 import pytest
 from pathlib import Path
@@ -8,7 +15,15 @@ class TestSyncCleanup:
     """Tests for sync cleanup functionality"""
     
     def test_cleanup(self, test_config, setup_dirs):
-        """Test cleanup functionality"""
+        """Test cleanup functionality.
+        
+        Features tested:
+        - Cleanup: Unused file detection
+        - Cleanup: Backup directory cleanup
+        - File operations: Safe deletion
+        - Verification: File existence checks
+        - Resource management: Cleanup after sync
+        """
         vault_root, jekyll_path, atomic_path = setup_dirs
         
         # Create some test files

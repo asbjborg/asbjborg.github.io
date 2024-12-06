@@ -1,4 +1,11 @@
-"""Tests for sync performance"""
+"""Tests for sync performance.
+
+This module tests:
+- Performance with large datasets
+- Memory usage with many files
+- Batch processing efficiency
+- Timing constraints
+"""
 
 import pytest
 import time
@@ -10,8 +17,18 @@ class TestSyncPerformance:
     """Tests for sync performance"""
     
     def test_performance(self, test_config, setup_dirs):
-        """Test sync performance with large dataset"""
-        vault_root, jekyll_path, atomic_path = setup_dirs
+        """Test sync performance with large dataset.
+        
+        Features tested:
+        - Performance: Large dataset handling (~1000 files)
+        - Performance: Multi-date processing (3 days)
+        - Performance: Batch operations (33 posts/day)
+        - Performance: Multiple images per post (10 images)
+        - Memory usage: Image reuse optimization
+        - Memory usage: Batch file creation
+        - Timing: Execution time constraints (<30s)
+        - Verification: File count and paths
+        """
         
         # Create multiple date folders for realistic load
         dates = [

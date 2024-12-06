@@ -1,4 +1,11 @@
-"""Tests for change detection"""
+"""Tests for change detection.
+
+This module tests:
+- File change detection (new, modified, deleted)
+- Post status handling (published, draft)
+- Timestamp-based sync direction
+- Multiple change handling
+"""
 
 import pytest
 import time
@@ -10,7 +17,13 @@ class TestChangeDetection:
     """Tests for change detection"""
     
     def test_detect_new_post(self, test_config):
-        """Test detection of new post"""
+        """Test detection of new post.
+        
+        Features tested:
+        - Change detection: New file detection
+        - Post handling: Status extraction
+        - Sync direction: Obsidian to Jekyll
+        """
         # Create new post in vault
         post_path = test_config.vault_root / "atomics/2024/01/15/new_post.md"
         post_path.parent.mkdir(parents=True, exist_ok=True)
@@ -31,7 +44,13 @@ Test content""")
         assert change.status == PostStatus.PUBLISHED
 
     def test_detect_modified_post(self, test_config):
-        """Test detection of modified post"""
+        """Test detection of modified post.
+        
+        Features tested:
+        - Change detection: Modification detection
+        - Timestamp handling: File comparison
+        - Sync direction: Based on timestamps
+        """
         # Create post in both locations
         vault_path = test_config.vault_root / "atomics/2024/01/15/modified.md"
         jekyll_path = test_config.jekyll_root / "_posts/2024-01-15-modified.md"
@@ -67,7 +86,13 @@ Updated content""")
         assert change.sync_direction == SyncDirection.OBSIDIAN_TO_JEKYLL
 
     def test_detect_deleted_post(self, test_config):
-        """Test detection of deleted post"""
+        """Test detection of deleted post.
+        
+        Features tested:
+        - Change detection: Deletion detection
+        - Sync direction: Jekyll to Obsidian
+        - File handling: Missing file detection
+        """
         # Create post only in Jekyll
         jekyll_path = test_config.jekyll_root / "_posts/2024-01-15-deleted.md"
         jekyll_path.parent.mkdir(parents=True, exist_ok=True)
@@ -86,7 +111,13 @@ status: published
         assert change.sync_direction == SyncDirection.JEKYLL_TO_OBSIDIAN
 
     def test_detect_draft_post(self, test_config):
-        """Test detection of draft post"""
+        """Test detection of draft post.
+        
+        Features tested:
+        - Post handling: Draft status
+        - Change detection: Status-based handling
+        - Sync direction: Draft handling
+        """
         # Create draft post in vault
         post_path = test_config.vault_root / "atomics/2024/01/15/draft.md"
         post_path.parent.mkdir(parents=True, exist_ok=True)
@@ -106,7 +137,13 @@ status: draft
         assert change.status == PostStatus.DRAFT
 
     def test_detect_multiple_changes(self, test_config):
-        """Test detection of multiple changes"""
+        """Test detection of multiple changes.
+        
+        Features tested:
+        - Change detection: Multiple operations
+        - Operation ordering: Based on timestamps
+        - Change aggregation: Multiple file states
+        """
         # Create various changes
         new_post = test_config.vault_root / "atomics/2024/01/15/new.md"
         modified_vault = test_config.vault_root / "atomics/2024/01/15/modified.md"

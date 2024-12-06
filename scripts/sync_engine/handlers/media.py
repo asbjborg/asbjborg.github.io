@@ -11,6 +11,8 @@ from PIL import Image, UnidentifiedImageError
 from ..core.exceptions import InvalidImageError, UnsupportedFormatError, ImageProcessingError
 from ..core.config import SyncConfig
 from ..core.atomic import AtomicUtils
+import gc
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -61,26 +63,31 @@ class MediaHandler:
     
     def validate_image(self, image_path: Path) -> None:
         """Validate image file before processing"""
+        from ..core.exceptions import InvalidImageError, UnsupportedFormatError
+        
+        logger.debug(f"Validating image: {image_path}")
+        
         if not image_path.exists():
+            logger.debug(f"Image not found: {image_path}")
             raise FileNotFoundError(f"Image not found: {image_path}")
         
         if image_path.suffix.lower() not in self.SUPPORTED_FORMATS:
+            logger.debug(f"Unsupported format: {image_path.suffix}")
             raise UnsupportedFormatError(f"Unsupported image format: {image_path.suffix}")
         
         if image_path.stat().st_size == 0:
+            logger.debug(f"Empty file: {image_path}")
             raise InvalidImageError(f"Empty image file: {image_path}")
         
         try:
             # Try to open and verify it's a valid image
+            logger.debug(f"Attempting to open and verify: {image_path}")
             with Image.open(image_path) as img:
                 img.verify()
-        except (UnidentifiedImageError, OSError) as e:
-            # For test files, create a valid image
-            if str(image_path).startswith('/private/var/folders') and 'pytest' in str(image_path):
-                img = Image.new('RGB', (100, 100), color='red')
-                img.save(image_path)
-            else:
-                raise InvalidImageError(f"Invalid or corrupted image: {image_path}") from e
+                logger.debug(f"Image verified successfully: {image_path} (mode={img.mode}, size={img.size})")
+        except (UnidentifiedImageError, OSError, ValueError, TypeError) as e:
+            logger.error(f"Failed to validate image {image_path}: {e}")
+            raise InvalidImageError(f"Invalid or corrupted image: {image_path}") from e
     
     def process_image(self, image_path: Path, target_path: Path) -> Optional[Path]:
         """
@@ -94,16 +101,24 @@ class MediaHandler:
             Path to processed image or None if failed
         """
         try:
+            logger.debug(f"Processing image {image_path} -> {target_path}")
+            
             # Validate image first
             self.validate_image(image_path)
+            logger.debug(f"Image validation passed for {image_path}")
             
+            # Use a context manager for better resource cleanup
             with Image.open(image_path) as img:
+                logger.debug(f"Opened image: {image_path} (mode={img.mode}, size={img.size})")
+                
                 # Convert to RGB if needed
                 if img.mode in ('RGBA', 'LA'):
-                    background = Image.new('RGB', img.size, (255, 255, 255))
-                    background.paste(img, mask=img.split()[-1])
-                    img = background
+                    logger.debug(f"Converting {img.mode} image to RGB with white background")
+                    with Image.new('RGB', img.size, (255, 255, 255)) as background:
+                        background.paste(img, mask=img.split()[-1])
+                        img = background.copy()
                 elif img.mode != 'RGB':
+                    logger.debug(f"Converting {img.mode} image to RGB")
                     img = img.convert('RGB')
                 
                 # Resize if too large
@@ -111,28 +126,68 @@ class MediaHandler:
                 if img.width > max_width:
                     ratio = max_width / img.width
                     new_size = (max_width, int(img.height * ratio))
+                    logger.debug(f"Resizing image from {img.size} to {new_size}")
                     img = img.resize(new_size, Image.Resampling.LANCZOS)
                 
                 # Save with optimization
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-                if target_path.suffix.lower() in {'.jpg', '.jpeg'}:
-                    img.save(target_path, 'JPEG', quality=85, optimize=True)
-                elif target_path.suffix.lower() == '.png':
-                    img.save(target_path, 'PNG', optimize=True)
-                elif target_path.suffix.lower() == '.webp':
-                    img.save(target_path, 'WEBP', quality=85)
-                else:
-                    img.save(target_path)
+                target_dir = target_path.parent
+                target_dir.mkdir(parents=True, exist_ok=True)
+                logger.debug(f"Created target directory: {target_dir}")
                 
-                logger.info(f"Processed and optimized image: {target_path}")
-                return target_path
+                # Check directory permissions
+                try:
+                    test_file = target_dir / ".write_test"
+                    test_file.touch()
+                    test_file.unlink()
+                    logger.debug(f"Directory is writable: {target_dir}")
+                except Exception as e:
+                    logger.error(f"Directory not writable: {target_dir} - {e}")
+                    raise
+                
+                logger.debug(f"Saving image to {target_path}")
+                
+                try:
+                    # Use a temporary file for atomic save
+                    temp_path = target_path.with_suffix('.tmp')
+                    
+                    if target_path.suffix.lower() in {'.jpg', '.jpeg'}:
+                        logger.debug("Saving as JPEG with optimization")
+                        img.save(temp_path, 'JPEG', quality=85, optimize=True)
+                    elif target_path.suffix.lower() == '.png':
+                        logger.debug("Saving as PNG with optimization")
+                        img.save(temp_path, 'PNG', optimize=True)
+                    elif target_path.suffix.lower() == '.webp':
+                        logger.debug("Saving as WebP")
+                        img.save(temp_path, 'WEBP', quality=85)
+                    else:
+                        logger.debug(f"Saving with default format {target_path.suffix}")
+                        img.save(temp_path)
+                    
+                    # Atomic move
+                    temp_path.replace(target_path)
+                    
+                    # Verify file
+                    if not target_path.exists():
+                        raise IOError(f"File not created: {target_path}")
+                    
+                    logger.debug(f"Successfully saved image: {target_path} ({target_path.stat().st_size} bytes)")
+                    return target_path
+                    
+                except Exception as e:
+                    logger.error(f"Failed to save image {target_path}: {e}", exc_info=True)
+                    if temp_path.exists():
+                        temp_path.unlink()
+                    raise
                 
         except (InvalidImageError, UnsupportedFormatError, FileNotFoundError) as e:
             logger.error(str(e))
             raise
         except Exception as e:
-            logger.error(f"Error processing image {image_path}: {e}")
+            logger.error(f"Error processing image {image_path}: {e}", exc_info=True)
             raise ImageProcessingError(f"Failed to process image: {e}") from e
+        finally:
+            # Force cleanup of any remaining image objects
+            gc.collect()
     
     def get_media_references(self, content: str) -> Set[str]:
         """Extract media references from content"""
@@ -268,26 +323,31 @@ class MediaHandler:
             Target path in Jekyll assets
         """
         try:
+            logger.debug(f"Syncing media file: {source_path}")
+            
             # Get Jekyll path
             target_path = self.get_jekyll_media_path(source_path)
+            logger.debug(f"Target path: {target_path}")
             
             # Create parent directories
             target_path.parent.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"Created parent directory: {target_path.parent}")
             
             # Process image if needed
             if source_path.suffix.lower() in self.SUPPORTED_FORMATS:
-                # Create parent directories
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-                return self.process_image(source_path, target_path)
+                logger.debug(f"Processing supported image: {source_path.suffix}")
+                result = self.process_image(source_path, target_path)
+                logger.debug(f"Image processing result: {result}")
+                return result
             else:
-                # Create parent directories
-                target_path.parent.mkdir(parents=True, exist_ok=True)
+                logger.debug(f"Copying non-image file directly: {source_path}")
                 # Copy non-image files directly
                 shutil.copy2(source_path, target_path)
+                logger.debug(f"File copied: {target_path}")
                 return target_path
             
         except Exception as e:
-            logger.error(f"Failed to sync media file {source_path}: {e}")
+            logger.error(f"Failed to sync media file {source_path}: {e}", exc_info=True)
             raise MediaError(f"Failed to sync media: {e}") from e
             
     def process_media_file(self, file_path: Path) -> Optional[str]:
@@ -552,3 +612,77 @@ class MediaHandler:
             return self.config.vault_root / ref
         else:
             return self.config.vault_root / 'atomics' / ref
+    
+    def process_batch(self, images: List[tuple[Path, Path]], chunk_size: int = 10) -> List[Path]:
+        """
+        Process multiple images in batches for better memory management
+        
+        Args:
+            images: List of (source_path, target_path) tuples
+            chunk_size: Number of images to process in each batch
+            
+        Returns:
+            List of successfully processed image paths
+            
+        Raises:
+            InvalidImageError: If an invalid image is encountered
+            UnsupportedFormatError: If an unsupported format is encountered
+            ImageProcessingError: If processing fails
+        """
+        from ..core.exceptions import InvalidImageError, UnsupportedFormatError, ImageProcessingError
+        
+        processed = []
+        total = len(images)
+        
+        logger.info(f"Processing {total} images in batches of {chunk_size}")
+        
+        # Process in chunks for memory efficiency
+        for i in range(0, total, chunk_size):
+            chunk = images[i:i + chunk_size]
+            logger.debug(f"Processing batch {i//chunk_size + 1}/{(total + chunk_size - 1)//chunk_size}")
+            
+            # Process each image in chunk
+            batch_processed = []
+            for source, target in chunk:
+                try:
+                    # Validate and process image
+                    logger.debug(f"Processing image: {source} -> {target}")
+                    self.validate_image(source)
+                    if processed_path := self.process_image(source, target):
+                        batch_processed.append(processed_path)
+                        logger.debug(f"Successfully processed: {processed_path}")
+                except (InvalidImageError, UnsupportedFormatError) as e:
+                    logger.error(f"Validation error for {source}: {e}")
+                    # Clean up any partial results from this batch
+                    for path in batch_processed:
+                        try:
+                            if path.exists():
+                                logger.debug(f"Cleaning up: {path}")
+                                path.unlink()
+                        except Exception as cleanup_err:
+                            logger.error(f"Failed to clean up {path}: {cleanup_err}")
+                    # Re-raise the original error
+                    raise
+                except Exception as e:
+                    logger.error(f"Processing error for {source}: {e}")
+                    # Clean up any partial results from this batch
+                    for path in batch_processed:
+                        try:
+                            if path.exists():
+                                logger.debug(f"Cleaning up: {path}")
+                                path.unlink()
+                        except Exception as cleanup_err:
+                            logger.error(f"Failed to clean up {path}: {cleanup_err}")
+                    raise ImageProcessingError(f"Failed to process {source}: {e}") from e
+            
+            processed.extend(batch_processed)
+            logger.debug(f"Batch complete. Total processed: {len(processed)}")
+            
+            # Force cleanup after each batch
+            gc.collect()
+            
+            # Small delay to allow memory to stabilize
+            time.sleep(0.1)
+        
+        logger.info(f"Processing complete. Total images processed: {len(processed)}")
+        return processed

@@ -24,6 +24,9 @@
 - Keep code adjustments brief - show only relevant lines
 - Respect existing prettier/lint preferences
 - Check if files exist before creating new ones
+- Add debug logging when code doesn't work as expected
+   - You may use specific logging_config.py for testing and also adding debug=True to config and running test with debug enabled
+- Read git commits to understand code history
 
 ### Environment
 
@@ -34,6 +37,26 @@
 
 ## Feature Development
 
+### Feature Tracking
+
+1. Feature Status
+   - Track features in `docs/strategy/implementation/checklist.yaml`
+   - Each feature group has status, files, and features list
+   - Use `scripts/progress_tracing.py` to check implementation status
+   - Keep checklist.yaml updated with actual file paths
+
+2. Implementation Status
+   - "Complete": Feature is fully implemented and tested
+   - "In Progress": Feature is being worked on
+   - Files section lists actual implementation files
+   - Features section lists key functionality provided
+
+3. Progress Monitoring
+   - Run progress_tracing.py to verify implementation
+   - Check for missing files or incomplete features
+   - Update status when features are completed
+   - Track overall project completion percentage
+
 ### Prerequisites
 
 1. Feature Creation
@@ -43,9 +66,8 @@
 
 2. Branch Setup
    - Create feature branch: `feature/name-v2`
-   - Create feature.md from template
+   - Update checklist.yaml with new feature
    - Create draft blog post in _drafts/
-   - Add feature.md to .gitignore
 
 ### Order of Operations
 
@@ -62,17 +84,12 @@
    - Add technical details after the friendly intro
 
 3. Feature Tracking
-   - Update feature.md locally
-   - Mark completed tasks
-   - Add new tasks if discovered
-   - Update progress details
+   - Update checklist.yaml with progress
+   - Mark features as complete when done
+   - Add new features if discovered
+   - Run progress_tracing.py to verify
 
-4. Remote Feature Update
-   - Use feature.md to update GitHub issue
-   - Command: gh issue edit ISSUE_NUMBER --body "$(cat feature.md)"
-   - DO NOT commit feature.md (should be in .gitignore)
-
-5. Code Commits
+4. Code Commits
    - Commit code changes
    - Commit blog post updates
    - Use descriptive commit messages
@@ -133,7 +150,7 @@ Related branch: feature/name-v2
 - Create feature-specific branch
 - Commit atomic changes
 - Keep blog post updated with progress
-- Update GitHub issue after significant changes
+- Update checklist.yaml after significant changes
 - PR when feature is complete
 
 ### Important Lessons

@@ -1,4 +1,11 @@
-"""Tests for sync media handling"""
+"""Tests for sync media handling.
+
+This module tests:
+- Media file processing (multiple formats)
+- Media reference handling (frontmatter and inline)
+- File synchronization (vault to Jekyll)
+- Path verification (existence checks)
+"""
 
 import pytest
 from pathlib import Path
@@ -9,7 +16,17 @@ class TestSyncMedia:
     """Tests for sync media handling"""
     
     def test_media_handling(self, test_config, setup_dirs):
-        """Test media file processing"""
+        """Test media file processing.
+        
+        Features tested:
+        - Media handling: Multiple image formats (JPEG, PNG)
+        - Media handling: Frontmatter image references
+        - Media handling: Inline image references
+        - File operations: Directory creation
+        - File operations: Image saving
+        - Path handling: Jekyll asset paths
+        - Verification: File existence checks
+        """
         vault_root, jekyll_path, atomic_path = setup_dirs
         
         # Create post with multiple images

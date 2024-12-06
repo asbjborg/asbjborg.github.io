@@ -1,296 +1,101 @@
 ---
-# Implementation and Test Progress Checklist
+# Simplification and Real-World Testing Checklist
 
-core:
-  atomic_operations:
-    status: "Complete"
+core_functionality:
+  post_handling:
+    status: "In Progress"
+    files:
+      - "scripts/sync_engine/handlers/post.py"
     features:
-      - name: "Atomic write"
-        requirements:
-          - "File operations"
-          - "Error handling"
-          - "State tracking"
-        implemented_in: "atomic_write"
-        verified_by: "test_atomic_write"
-      - name: "Batch operations"
-        requirements:
-          - "Transaction handling"
-          - "Rollback support"
-          - "Error handling"
-        implemented_in: "execute_batch"
-        verified_by: "test_atomic_batch"
-      - name: "Error recovery"
-        requirements:
-          - "Error detection"
-          - "Resource cleanup"
-          - "State recovery"
-        implemented_in: "handle_rollback"
-        verified_by: "test_atomic_rollback"
-  
-  change_detection:
-    status: "Complete"
-    features:
-      - name: "New post detection"
-        requirements:
-          - "File monitoring"
-          - "State tracking"
-          - "Operation detection"
-        implemented_in: "detect_new"
-        verified_by: "test_detect_new_post"
-      - name: "Modified post detection"
-        requirements:
-          - "Timestamp tracking"
-          - "Content comparison"
-          - "State updates"
-        implemented_in: "detect_modified"
-        verified_by: "test_detect_modified_post"
-      - name: "Deleted post detection"
-        requirements:
-          - "Reference cleanup"
-          - "State cleanup"
-          - "History tracking"
-        implemented_in: "detect_deleted"
-        verified_by: "test_detect_deleted_post"
-      - name: "Draft status handling"
-        requirements:
-          - "Status changes"
-          - "Visibility control"
-          - "State tracking"
-        implemented_in: "handle_draft"
-        verified_by: "test_detect_draft_post"
-      - name: "Multiple changes"
-        requirements:
-          - "Batch detection"
-          - "Change ordering"
-          - "Operation tracking"
-        implemented_in: "detect_multiple"
-        verified_by: "test_detect_multiple_changes"
-  
-  config_handling:
-    status: "Complete"
-    features:
-      - name: "Config loading"
-        requirements:
-          - "Load config files"
-          - "Environment variables"
-          - "Path validation"
-        implemented_in: "load_config"
-        verified_by: "test_config_loading"
-      - name: "Config validation"
-        requirements:
-          - "Required fields"
-          - "Optional fields"
-          - "Type checking"
-        implemented_in: "validate_config"
-        verified_by: "test_config_validation"
-      - name: "Path computation"
-        requirements:
-          - "Path normalization"
-          - "Directory creation"
-          - "Permission checking"
-        implemented_in: "compute_paths"
-        verified_by: "test_computed_paths"
-      - name: "Default handling"
-        requirements:
-          - "Default values"
-          - "Value overrides"
-          - "Type coercion"
-        implemented_in: "handle_defaults"
-        verified_by: "test_config_defaults"
-      - name: "Override handling"
-        requirements:
-          - "Value overrides"
-          - "Priority handling"
-          - "Validation rules"
-        implemented_in: "handle_overrides"
-        verified_by: "test_config_overrides"
+      - "Single post processing"
+      - "Basic frontmatter handling"
+      - "Simple path management"
+    success_criteria:
+      - "Successfully process a real blog post with images"
+      - "Maintain proper file structure"
+      - "Handle basic frontmatter fields"
 
-handlers:
-  media_handler:
-    status: "Complete"
+  media_handling:
+    status: "In Progress"
+    files:
+      - "scripts/sync_engine/handlers/media.py"
     features:
-      - name: "Image processing"
-        requirements:
-          - "Image resizing"
-          - "Dimension handling"
-          - "Memory usage"
-        implemented_in: "process_image"
-        verified_by: "test_image_resizing"
-      - name: "Color handling"
-        requirements:
-          - "Color mode handling"
-          - "Background handling"
-          - "Quality control"
-        implemented_in: "handle_color"
-        verified_by: "test_rgba_conversion"
-      - name: "Format conversion"
-        requirements:
-          - "Format detection"
-          - "Size optimization"
-          - "Quality control"
-        implemented_in: "convert_format"
-        verified_by: "test_format_conversion"
-      - name: "Grayscale handling"
-        requirements:
-          - "Color mode handling"
-          - "Format conversion"
-          - "Quality control"
-        implemented_in: "handle_grayscale"
-        verified_by: "test_grayscale_handling"
-      - name: "Error handling"
-        requirements:
-          - "Missing files"
-          - "Invalid references"
-          - "Error recovery"
-        implemented_in: "handle_errors"
-        verified_by: ["test_missing_file", "test_invalid_reference"]
-      - name: "Reference handling"
-        requirements:
-          - "Path extraction"
-          - "Reference validation"
-          - "Path sanitization"
-        implemented_in: "handle_references"
-        verified_by: ["test_image_frontmatter_handling", "test_path_sanitization"]
-  
-  post_handler:
-    status: "Complete"
-    features:
-      - name: "Frontmatter handling"
-        requirements:
-          - "Parse frontmatter"
-          - "Extract metadata"
-          - "Handle defaults"
-        implemented_in: "parse_frontmatter"
-        verified_by: "test_frontmatter_parsing"
-      - name: "Path handling"
-        requirements:
-          - "Path conversion"
-          - "Date extraction"
-          - "Directory creation"
-        implemented_in: "handle_paths"
-        verified_by: "test_post_path_handling"
-      - name: "Content processing"
-        requirements:
-          - "Content parsing"
-          - "Link conversion"
-          - "Format conversion"
-        implemented_in: "process_content"
-        verified_by: "test_post_processing"
+      - "Basic image processing (1-3 images)"
+      - "Simple format conversion"
+      - "Immediate cleanup of unused files"
+    success_criteria:
+      - "Process 1-3 images per post correctly"
+      - "Convert images to web-friendly format"
+      - "Clean up unused images immediately"
 
-sync:
-  basic:
-    status: "Complete"
+  error_handling:
+    status: "In Progress"
+    files:
+      - "scripts/sync_engine/core/atomic.py"
     features:
-      - name: "Basic sync"
-        requirements:
-          - "File synchronization"
-          - "Content verification"
-          - "State tracking"
-        implemented_in: "sync"
-        verified_by: "test_basic_sync"
-      - name: "Engine initialization"
-        requirements:
-          - "Content verification"
-          - "Path verification"
-          - "Permission checking"
-        implemented_in: "initialize"
-        verified_by: "test_engine_initialization"
-      - name: "Change detection"
-        requirements:
-          - "Operation execution"
-          - "Operation ordering"
-          - "Operation cleanup"
-        implemented_in: "detect_changes"
-        verified_by: "test_detect_changes_empty"
-  
-  cleanup:
-    status: "Complete"
-    features:
-      - name: "Auto cleanup"
-        requirements:
-          - "Cleanup timing"
-          - "File verification"
-          - "Resource cleanup"
-        implemented_in: "cleanup"
-        verified_by: "test_auto_cleanup"
-      - name: "Cleanup handling"
-        requirements:
-          - "Automatic cleanup"
-          - "Resource verification"
-          - "State tracking"
-        implemented_in: "handle_cleanup"
-        verified_by: "test_cleanup"
-  
-  paths:
-    status: "Complete"
-    features:
-      - name: "Complex paths"
-        requirements:
-          - "Path normalization"
-          - "Special characters"
-          - "Space handling"
-        implemented_in: "handle_paths"
-        verified_by: "test_complex_paths"
-      - name: "Auto cleanup"
-        requirements:
-          - "Cleanup timing"
-          - "File verification"
-          - "State tracking"
-        implemented_in: "cleanup"
-        verified_by: "test_auto_cleanup"
-  
-  errors:
-    status: "Complete"
-    features:
-      - name: "Error handling"
-        requirements:
-          - "Error detection"
-          - "Partial sync"
-          - "State tracking"
-        implemented_in: "handle_errors"
-        verified_by: "test_sync_with_errors"
-      - name: "Rollback"
-        requirements:
-          - "Error recovery"
-          - "State rollback"
-          - "Resource cleanup"
-        implemented_in: "rollback"
-        verified_by: "test_atomic_rollback"
+      - "Basic error recovery"
+      - "Clear error messages"
+      - "Simple atomic operations"
+    success_criteria:
+      - "Recover from common errors (file not found, invalid image)"
+      - "Provide clear error messages to user"
+      - "Never leave files in inconsistent state"
 
-performance:
-  media:
-    status: "Enhanced"
-    features:
-      - name: "Performance testing"
-        requirements:
-          - "Batch processing"
-          - "Memory management"
-          - "Operation tracking"
-        implemented_in: "test_performance"
-        verified_by: "test_performance_with_images"
-  
-  sync:
-    status: "Complete"
-    features:
-      - name: "Large datasets"
-        requirements:
-          - "Large dataset handling"
-          - "Multi-date processing"
-          - "Memory management"
-        implemented_in: "handle_large_datasets"
-        verified_by: "test_performance"
+simplification:
+  remove_complexity:
+    status: "Pending"
+    files:
+      - "scripts/sync_engine/handlers/media.py"
+      - "scripts/sync_engine/tests/media/test_media_performance.py"
+    tasks:
+      - "Remove batch processing optimizations"
+      - "Remove memory profiling code"
+      - "Remove cleanup delay complexity"
+      - "Simplify performance tests"
 
-coverage_goals:
-  core_components: 90
-  handlers: 85
-  integration_tests: 80
+  focus_tests:
+    status: "Pending"
+    files:
+      - "scripts/sync_engine/tests/media/test_media_errors.py"
+      - "scripts/sync_engine/tests/sync/test_sync_errors.py"
+    tasks:
+      - "Update tests for single post scenarios"
+      - "Focus on common error cases"
+      - "Remove complex performance tests"
+      - "Add real-world usage tests"
 
-implementation_notes:
-  - "Keep test names consistent with implementation methods"
-  - "Use descriptive test names that match feature names"
-  - "Add debug logging for complex operations"
-  - "Document edge cases in test docstrings"
-  - "Track method names where features are implemented"
-  - "Use PerformanceMetrics for memory and timing tracking"
-  - "Verify memory usage with garbage collection"
-  - "Track per-operation performance metrics"
+real_world_testing:
+  test_scenarios:
+    status: "Pending"
+    description: "Test with actual blog post content"
+    scenarios:
+      - "Create new post with 2 images"
+      - "Update existing post content"
+      - "Add image to existing post"
+      - "Remove image from post"
+      - "Handle invalid image gracefully"
+    success_criteria:
+      - "All operations complete without errors"
+      - "Files are in correct locations"
+      - "Images are properly optimized"
+      - "Cleanup works correctly"
+
+  validation:
+    status: "Pending"
+    steps:
+      - "Test with real Obsidian vault"
+      - "Verify Jekyll site builds correctly"
+      - "Check image paths in rendered site"
+      - "Verify cleanup of unused files"
+    success_criteria:
+      - "Blog builds successfully"
+      - "Images display correctly"
+      - "No broken links"
+      - "No leftover temporary files"
+
+todo:
+  - "Simplify MediaHandler batch processing"
+  - "Update tests for realistic scenarios"
+  - "Remove unused performance code"
+  - "Create real-world test post"
+  - "Test with live Obsidian vault"

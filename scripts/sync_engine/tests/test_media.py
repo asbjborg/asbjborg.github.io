@@ -17,6 +17,7 @@ from sync_engine.tests.media.test_processing import TestMediaProcessing
 from sync_engine.tests.media.test_references import TestMediaReferences
 from sync_engine.tests.media.test_media_errors import TestMediaErrors
 from sync_engine.tests.media.test_media_performance import TestMediaPerformance
+from sync_engine.tests.media.test_batch_processing import TestMediaBatchProcessing
 
 # This file serves as a collector of all media-related tests
 # Each test class is defined in its own file for better organization

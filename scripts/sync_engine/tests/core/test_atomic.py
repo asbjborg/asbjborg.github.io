@@ -1,4 +1,11 @@
-"""Tests for atomic operations"""
+"""Tests for atomic operations.
+
+This module tests:
+- File operations (write, copy, move, delete)
+- Batch operations (multiple operations)
+- Rollback functionality (error handling)
+- State management (operation tracking)
+"""
 
 import pytest
 from pathlib import Path
@@ -12,7 +19,13 @@ class TestAtomicOperations:
     """Tests for atomic operations"""
     
     def test_atomic_write(self, atomic_manager, test_config):
-        """Test atomic write operation"""
+        """Test atomic write operation.
+        
+        Features tested:
+        - File operations: Atomic write
+        - State management: Operation tracking
+        - File handling: Content verification
+        """
         source = test_config.vault_root / "test.md"
         source.write_text("test content")
         target = test_config.jekyll_root / "_posts/test.md"
@@ -29,7 +42,13 @@ class TestAtomicOperations:
         assert target.read_text() == "test content"
 
     def test_atomic_copy(self, atomic_manager, test_config):
-        """Test atomic copy operation"""
+        """Test atomic copy operation.
+        
+        Features tested:
+        - File operations: Binary file copying
+        - State management: Operation tracking
+        - File handling: Content preservation
+        """
         source = test_config.vault_root / "test.png"
         source.write_bytes(b"test image")
         target = test_config.jekyll_root / "assets/img/posts/test.png"
@@ -46,7 +65,13 @@ class TestAtomicOperations:
         assert target.read_bytes() == b"test image"
 
     def test_atomic_move(self, atomic_manager, test_config):
-        """Test atomic move operation"""
+        """Test atomic move operation.
+        
+        Features tested:
+        - File operations: Atomic move
+        - State management: Source deletion
+        - File handling: Content preservation
+        """
         source = test_config.vault_root / "old.md"
         source.write_text("test content")
         target = test_config.vault_root / "new.md"
@@ -64,7 +89,13 @@ class TestAtomicOperations:
         assert target.read_text() == "test content"
 
     def test_atomic_delete(self, atomic_manager, test_config):
-        """Test atomic delete operation"""
+        """Test atomic delete operation.
+        
+        Features tested:
+        - File operations: Safe deletion
+        - State management: Deletion tracking
+        - File handling: Existence verification
+        """
         target = test_config.jekyll_root / "_posts/delete_me.md"
         target.write_text("to be deleted")
         
@@ -79,7 +110,13 @@ class TestAtomicOperations:
         assert not target.exists()
 
     def test_atomic_batch(self, atomic_manager, test_config):
-        """Test atomic batch operations"""
+        """Test atomic batch operations.
+        
+        Features tested:
+        - Batch operations: Multiple file handling
+        - State management: Batch tracking
+        - File operations: Mixed operation types
+        """
         # Create test files
         post = test_config.vault_root / "test_batch.md"
         post.write_text("test post")
@@ -110,7 +147,13 @@ class TestAtomicOperations:
         assert (test_config.jekyll_root / "assets/img/posts/test_batch.png").exists()
         
     def test_atomic_rollback(self, atomic_manager, test_config):
-        """Test atomic operation rollback"""
+        """Test atomic operation rollback.
+        
+        Features tested:
+        - Rollback: Failed operation handling
+        - State management: Rollback tracking
+        - Error handling: Exception propagation
+        """
         # Create test file that will fail
         source = test_config.vault_root / "test_rollback.md"
         source.write_text("test content")
