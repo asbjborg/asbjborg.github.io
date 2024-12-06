@@ -22,6 +22,7 @@ class SyncConfig:
     continue_on_error: bool = False
     auto_cleanup: bool = True
     validate_paths: bool = True
+    cleanup_delay: float = 0.0  # Delay in seconds before cleanup
     
     # Media settings
     optimize_images: bool = True

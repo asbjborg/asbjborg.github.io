@@ -55,6 +55,9 @@ recent_fixes:
     - "Fixed component initialization order"
     - "Added sync_direction to post handler"
     - "Improved error handling and logging"
+    - "Added cleanup delay support"
+    - "Fixed post cleanup in sync manager"
+    - "Added delayed cleanup with threading"
     
   media_handler:
     - "Improved path resolution"
@@ -68,24 +71,58 @@ recent_fixes:
     - "Updated tests with config"
     - "Added more edge cases"
 
+  cleanup_tests:
+    - "Added auto cleanup test"
+    - "Added cleanup delay test"
+    - "Verified cleanup timing"
+    - "Added cleanup documentation"
+    - "Fixed cleanup edge cases"
+
   performance_tests:
     - "Fixed expected count in sync test"
     - "Clarified test documentation"
     - "Added detailed count explanation"
     - "Verified media performance"
 
-next_steps:
-  path_handling:
-    - "Test complex Unicode paths"
-    - "Test very long filenames"
-    - "Test special characters"
-    - "Verify path normalization"
+path_handling:
+  status: in_progress
+  findings:
+    - The path handling test is failing because media files aren't being copied correctly
+    - The test setup is correct, with proper vault and Jekyll paths
+    - The MediaHandler correctly converts Unicode filenames (über.jpg -> uber.jpg)
+    - The issue is in the process_image method not actually saving the files
     
-  code_organization:
-    - "Consider splitting large files into modules"
-    - "Add interface documentation"
-    - "Improve error messages"
-    - "Add type hints"
+  reflections:
+    - We've been focusing too much on configuration and paths, when the real issue is simpler
+    - The test output shows that target paths are correct but files don't exist
+    - We need to verify that process_image is actually saving files
+    - We should add more granular tests for each MediaHandler method
+    
+  next_steps:
+    - Add unit tests for MediaHandler.process_image
+    - Add unit tests for MediaHandler.sync_media
+    - Add logging to track file operations
+    - Consider using atomic operations for image processing
+    
+  test_coverage:
+    - Complex filenames: ✓ (test exists but failing)
+    - Unicode characters: ✓ (test exists but failing)
+    - Special characters: ✓ (test exists but failing)
+    - Long filenames: ✓ (test exists but failing)
+    - Atomic operations: ✗ (needs tests)
+    - Error handling: ✗ (needs tests)
+    
+  bugs_found:
+    - process_image not saving files correctly
+    - Multiple mkdir calls in sync_media (redundant)
+    - No atomic operations for image processing
+    - No error handling for failed file operations
+
+code_organization:
+  - "Consider splitting large files into modules"
+  - "Add interface documentation"
+  - "Improve error messages"
+  - "Add type hints"
 
 important_lessons:
   code_modification:
