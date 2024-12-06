@@ -276,12 +276,11 @@ class MediaHandler:
             
             # Process image if needed
             if source_path.suffix.lower() in self.SUPPORTED_FORMATS:
-                self.process_image(source_path, target_path)
+                return self.process_image(source_path, target_path)
             else:
                 # Copy non-image files directly
                 shutil.copy2(source_path, target_path)
-            
-            return target_path
+                return target_path
             
         except Exception as e:
             logger.error(f"Failed to sync media file {source_path}: {e}")
