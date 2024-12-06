@@ -276,8 +276,12 @@ class MediaHandler:
             
             # Process image if needed
             if source_path.suffix.lower() in self.SUPPORTED_FORMATS:
+                # Create parent directories
+                target_path.parent.mkdir(parents=True, exist_ok=True)
                 return self.process_image(source_path, target_path)
             else:
+                # Create parent directories
+                target_path.parent.mkdir(parents=True, exist_ok=True)
                 # Copy non-image files directly
                 shutil.copy2(source_path, target_path)
                 return target_path
