@@ -56,3 +56,27 @@ _site/
 .AppleDouble
 .LSOverride
 Thumbs.db
+
+# Test files and directories
+PKM/
+PKM_backup/
+_posts_backup/
+assets/img/posts_backup/
+test_post.md
+test_sync/
+test_backup/
+
+# Generated test files
+_posts/2024-12-04-jekyll-only-post.md
+_posts/2024-12-04-testing-jekyll-sync-engine.md
+assets/img/posts/first-content-image.png
+assets/img/posts/second-content-image.png
+assets/img/posts/test-image1.png
+assets/img/posts/test-image2.png
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
