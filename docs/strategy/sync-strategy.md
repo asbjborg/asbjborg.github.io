@@ -1,7 +1,5 @@
 # Sync Strategy
 
-> **Implementation Status**: Track progress in [Implementation Checklist](implementation/checklist.md)
-
 ## Overview
 The sync engine manages bidirectional synchronization between an Obsidian vault and a Jekyll blog. All content lives in atomic notes, organized by date. Blog posts are just notes with `status: "published"`.
 
