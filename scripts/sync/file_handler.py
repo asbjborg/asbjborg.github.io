@@ -17,9 +17,15 @@ class FileHandler:
     def __init__(self, vault_root: str, jekyll_root: str, debug: bool = False):
         self.vault_root = Path(vault_root)
         self.jekyll_root = Path(jekyll_root)
-        self.atomics_dir = self.vault_root / "atomics"
-        self.posts_dir = self.jekyll_root / "_posts"
-        self.assets_dir = self.jekyll_root / "assets" / "img" / "posts"
+        
+        # Get paths from environment variables with defaults
+        atomics_path = os.getenv('SYNC_VAULT_ATOMICS', 'atomics')
+        posts_path = os.getenv('SYNC_JEKYLL_POSTS', '_posts')
+        assets_path = os.getenv('SYNC_JEKYLL_ASSETS', 'assets/img/posts')
+        
+        self.atomics_dir = self.vault_root / atomics_path
+        self.posts_dir = self.jekyll_root / posts_path
+        self.assets_dir = self.jekyll_root / assets_path
         self.debug = debug
 
     def print_info(self, text: str) -> None:
