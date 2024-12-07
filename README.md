@@ -1,56 +1,66 @@
-# asbjborg.github.io
+# Jekyll-Obsidian Sync
 
-My personal blog, built with Jekyll and enhanced with Obsidian sync functionality. The blog automatically syncs content from my Obsidian vault, handling both posts and media files.
+A bidirectional sync engine for Obsidian PKM and Jekyll blog posts. Keep your Obsidian vault and Jekyll blog in sync with automatic conversion of frontmatter, image paths, and more.
 
 ## Features
 
-### Obsidian Integration
+- **Bidirectional Sync**
+  - Obsidian → Jekyll: Convert published notes to blog posts
+  - Jekyll → Obsidian: Import blog posts into your vault
+  - Smart conflict resolution based on modification time
 
-The blog includes automatic syncing from Obsidian vault to Jekyll posts with the following features:
+- **Asset Handling**
+  - Automatic image path conversion
+  - Asset file normalization
+  - Proper path handling in both environments
 
-- **Automatic Post Sync**: Posts marked with `published: true` in Obsidian are automatically synced
-- **Media Handling**:
-  - Supports Obsidian image syntax (`![[image.png]]`)
-  - Automatically processes and optimizes images
-  - Handles featured images in frontmatter
-- **File Organization**:
-  - Maintains proper Jekyll post naming convention
-  - Organizes media files in assets directory
-  - Handles file conflicts with content hashing
-- **Quality Control**:
-  - Markdown linting
-  - Image optimization
-  - Proper newline handling
+- **Frontmatter Support**
+  - Status-based publishing (published/draft)
+  - Time format conversion
+  - Tag filtering
+  - Wikilink handling
 
-### Configuration
+- **Safety Features**
+  - Dry run mode to preview changes
+  - Automatic backups with rotation
+  - Detailed logging
+  - Error handling
 
-The sync functionality requires the following environment variables in `.env`:
+## Quick Start
 
-```shell
-SYNC_VAULT_ROOT=/path/to/obsidian/vault
-SYNC_JEKYLL_ROOT=/path/to/jekyll/site
-SYNC_DEBUG=false
-SYNC_BACKUP_COUNT=5
-SYNC_AUTO_CLEANUP=true
-SYNC_MAX_IMAGE_WIDTH=1200
-SYNC_OPTIMIZE_IMAGES=true
-```
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### Automatic Sync
+2. Set up your environment:
+   ```bash
+   export PKM_ROOT=/path/to/obsidian/vault
+   export JEKYLL_ROOT=/path/to/jekyll/site
+   ```
 
-The blog uses a cron job to automatically sync posts every 5 minutes. The sync script:
+3. Run the sync:
+   ```bash
+   # Preview changes with dry run
+   python scripts/sync.py --dry-run
 
-1. Checks for new/updated posts in Obsidian
-2. Processes any media files
-3. Updates the Jekyll blog
-4. Commits and pushes changes
+   # Run the actual sync
+   python scripts/sync.py
+   ```
 
-## Acknowledgments
+## Documentation
 
-This blog is powered by [Jekyll](https://jekyllrb.com/) and uses the beautiful [Chirpy theme](https://github.com/cotes2020/jekyll-theme-chirpy/). Big thanks to both projects for making this blog possible! ❤️
+- [Usage Guide](docs/usage.md) - Detailed usage instructions
+- [Development Guide](docs/development.md) - Development setup and contribution
+- [API Documentation](docs/api.md) - API reference
+
+## Requirements
+
+- Python 3.8+
+- python-frontmatter
+- pathlib
+- typing
 
 ## License
 
-This work is published under [MIT][mit] License.
-
-[mit]: https://github.com/cotes2020/chirpy-starter/blob/master/LICENSE
+MIT License - See [LICENSE](LICENSE) for details
