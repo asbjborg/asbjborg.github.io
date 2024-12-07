@@ -28,8 +28,8 @@ class PathConverter:
         jekyll_path = self.jekyll_root / self.posts_path / f"{date_str}-{filename}.md"
         
         if self.debug:
-            print(f"Converting Obsidian post path: {obsidian_path}")
-            print(f"To Jekyll post path: {jekyll_path}")
+            print(f"Converting Obsidian post path: {obsidian_path.relative_to(self.vault_root)}")
+            print(f"To Jekyll post path: {jekyll_path.relative_to(self.jekyll_root)}")
         
         return jekyll_path
 
@@ -46,8 +46,8 @@ class PathConverter:
         obsidian_path = self.vault_root / self.atomics_path / year / month / day / f"{name}.md"
         
         if self.debug:
-            print(f"Converting Jekyll post path: {jekyll_path}")
-            print(f"To Obsidian post path: {obsidian_path}")
+            print(f"Converting Jekyll post path: {jekyll_path.relative_to(self.jekyll_root)}")
+            print(f"To Obsidian post path: {obsidian_path.relative_to(self.vault_root)}")
         
         return obsidian_path
 
