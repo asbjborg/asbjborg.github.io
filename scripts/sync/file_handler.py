@@ -52,7 +52,8 @@ class FileHandler:
                 status = post.get('status', None)
                 
                 if self.debug:
-                    self.print_info(f"Found file: {md_file.relative_to(self.vault_root)}, status: {status}")
+                    rel_path = md_file.relative_to(self.vault_root)
+                    self.print_info(f"Found file: {rel_path}, status: {status}")
                 
                 if status == "published":
                     published_files.append(md_file)
