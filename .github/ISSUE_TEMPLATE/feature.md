@@ -13,30 +13,47 @@ Brief description of the feature.
 ## Tasks
 
 1. Core Development
-   - [ ] Task 1
-   - [ ] Task 2
+   - [ ] Add tasks to checklist.json
+   - [ ] Implement core functionality
+   - [ ] Add dry run support
+   - [ ] Add debug logging
 
-2. Documentation
-   - [ ] Update technical docs
-   - [ ] Write blog post
-   - [ ] Add user guide
+2. Testing
+   - [ ] Create standardized test cases
+   - [ ] Add unit tests
+   - [ ] Add edge case tests
+   - [ ] Verify dry run mode
+
+3. Documentation
+   - [ ] Update README.md
+   - [ ] Add usage guide
+   - [ ] Add API documentation
+   - [ ] Add code examples
 
 ## Success Criteria
 
-- Criterion 1
-- Criterion 2
+- All tests pass
+- Dry run works correctly
+- Documentation is complete
+- Code follows style guide
+- No linting errors
 
 ## Testing Scope
 
 1. Unit Tests
-   - Test area 1
-   - Test area 2
+   - Core functionality
+   - Edge cases
+   - Error handling
+   - Dry run mode
 
 2. Integration Tests
-   - Test scenario 1
-   - Test scenario 2
+   - File operations
+   - Path conversion
+   - Frontmatter handling
+   - Backup functionality
 
 ## Related
 
 - Branch: `feature/name-v2`
-- Blog post: `_drafts/feature-name.md`
+- Checklist: `docs/strategy/implementation/checklist.json`
+- Documentation: `docs/*.md`
