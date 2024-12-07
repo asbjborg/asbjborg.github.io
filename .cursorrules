@@ -29,6 +29,29 @@
    - Use print statements liberally when SYNC_DEBUG=true
 - Read git commits to understand code history
 
+### Multi-line Content
+
+- When using commit_message.txt for multi-line content:
+  1. ALWAYS clean the file first:
+     ```bash
+     echo "" > commit_message.txt  # Clear the file
+     ```
+  2. Write new content to the file
+  3. Use the file for commands:
+     ```bash
+     gh issue edit 6 -F commit_message.txt
+     gh issue comment 6 -F commit_message.txt
+     git commit -F commit_message.txt
+     ```
+  4. Verify the file content before using
+
+- Common uses:
+  - Commit messages
+  - Issue bodies
+  - Issue comments
+  - PR descriptions
+  - Long documentation
+
 ### Environment
 
 - Assume MacOS environment
