@@ -1,0 +1,120 @@
+{
+  "project": "Jekyll-Obsidian Sync",
+  "version": "1.0.0",
+  "features": {
+    "core": {
+      "status": "Completed",
+      "tasks": [
+        {
+          "id": "core-1",
+          "title": "File Handling",
+          "completed": true,
+          "subtasks": [
+            { "id": "core-1-1", "title": "Get list of published Obsidian files", "completed": true },
+            { "id": "core-1-2", "title": "Get list of draft Obsidian files", "completed": true },
+            { "id": "core-1-3", "title": "Get list of Jekyll posts", "completed": true },
+            { "id": "core-1-4", "title": "Get list of Jekyll assets", "completed": true }
+          ]
+        },
+        {
+          "id": "core-2",
+          "title": "Testing Infrastructure",
+          "completed": true,
+          "subtasks": [
+            { "id": "core-2-1", "title": "Convert all test files to use standardized test cases", "completed": true },
+            { "id": "core-2-2", "title": "Remove dependency on actual files in tests", "completed": true },
+            { "id": "core-2-3", "title": "Add comprehensive edge cases to test files", "completed": true },
+            { "id": "core-2-4", "title": "Ensure all tests clean up after themselves", "completed": true }
+          ]
+        },
+        {
+          "id": "core-3",
+          "title": "Dry Run Support",
+          "completed": true,
+          "subtasks": [
+            { "id": "core-3-1", "title": "Add --dry-run flag to normalize_assets.py", "completed": true },
+            { "id": "core-3-2", "title": "Add --dry-run flag to sync.py", "completed": true },
+            { "id": "core-3-3", "title": "Add --dry-run flag to frontmatter.py", "completed": true }
+          ]
+        }
+      ]
+    },
+    "sync": {
+      "status": "Completed",
+      "tasks": [
+        {
+          "id": "sync-1",
+          "title": "Obsidian to Jekyll",
+          "completed": true,
+          "subtasks": [
+            { "id": "sync-1-1", "title": "Sync posts and images", "completed": true },
+            { "id": "sync-1-2", "title": "Convert time formats", "completed": true },
+            { "id": "sync-1-3", "title": "Convert image paths", "completed": true },
+            { "id": "sync-1-4", "title": "Filter system tags", "completed": true }
+          ]
+        },
+        {
+          "id": "sync-2",
+          "title": "Jekyll to Obsidian",
+          "completed": true,
+          "subtasks": [
+            { "id": "sync-2-1", "title": "Sync posts and images", "completed": true },
+            { "id": "sync-2-2", "title": "Convert time formats", "completed": true },
+            { "id": "sync-2-3", "title": "Convert image paths", "completed": true },
+            { "id": "sync-2-4", "title": "Handle frontmatter", "completed": true }
+          ]
+        }
+      ]
+    },
+    "filename_handling": {
+      "status": "Completed",
+      "tasks": [
+        {
+          "id": "filename-1",
+          "title": "Normalize markdown filenames",
+          "completed": true,
+          "subtasks": [
+            { "id": "filename-1-1", "title": "Convert spaces to hyphens", "completed": true },
+            { "id": "filename-1-2", "title": "Convert to lowercase", "completed": true },
+            { "id": "filename-1-3", "title": "Remove special characters", "completed": true }
+          ]
+        },
+        {
+          "id": "filename-2",
+          "title": "Handle date in filenames",
+          "completed": true,
+          "subtasks": [
+            { "id": "filename-2-1", "title": "Extract date from Obsidian folder structure", "completed": true },
+            { "id": "filename-2-2", "title": "Prepend date to Jekyll filenames", "completed": true },
+            { "id": "filename-2-3", "title": "Handle date format consistently", "completed": true }
+          ]
+        }
+      ]
+    },
+    "backup": {
+      "status": "Completed",
+      "tasks": [
+        {
+          "id": "backup-1",
+          "title": "PKM Backup",
+          "completed": true,
+          "subtasks": [
+            { "id": "backup-1-1", "title": "Create backup directory", "completed": true },
+            { "id": "backup-1-2", "title": "Copy files to backup", "completed": true },
+            { "id": "backup-1-3", "title": "Handle backup rotation", "completed": true }
+          ]
+        },
+        {
+          "id": "backup-2",
+          "title": "Jekyll Backup",
+          "completed": true,
+          "subtasks": [
+            { "id": "backup-2-1", "title": "Create backup directory", "completed": true },
+            { "id": "backup-2-2", "title": "Copy files to backup", "completed": true },
+            { "id": "backup-2-3", "title": "Handle backup rotation", "completed": true }
+          ]
+        }
+      ]
+    }
+  }
+}
