@@ -80,3 +80,6 @@ assets/img/posts/test-image2.png
 env/
 venv/
 ENV/
+
+# One-time cleanup scripts
+scripts/fix_times.py
