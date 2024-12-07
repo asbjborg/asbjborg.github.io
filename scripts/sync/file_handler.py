@@ -1,7 +1,9 @@
 import os
+import re
 import frontmatter
 from typing import List, Dict, Tuple
 from pathlib import Path
+from dotenv import load_dotenv
 
 # ANSI color codes
 class Colors:
@@ -15,6 +17,9 @@ class Colors:
 
 class FileHandler:
     def __init__(self, vault_root: str, jekyll_root: str, debug: bool = False):
+        # Load environment variables
+        load_dotenv()
+        
         self.vault_root = Path(vault_root)
         self.jekyll_root = Path(jekyll_root)
         
@@ -53,6 +58,26 @@ class FileHandler:
         """Check if a file is a test file"""
         name = path.stem.lower()
         return any(pattern.lower() in name for pattern in self.test_patterns)
+    
+    def normalize_filename(self, filename: str) -> str:
+        """Normalize a filename for comparison"""
+        # Remove date prefix if present (YYYY-MM-DD-)
+        filename = re.sub(r'^\d{4}-\d{2}-\d{2}-', '', filename)
+        
+        # Remove file extension
+        filename = os.path.splitext(filename)[0]
+        
+        # Convert to lowercase
+        filename = filename.lower()
+        
+        # Replace special characters and multiple spaces
+        filename = re.sub(r'[^a-z0-9]+', ' ', filename)
+        filename = re.sub(r'\s+', ' ', filename)
+        
+        # Remove leading/trailing spaces
+        filename = filename.strip()
+        
+        return filename
 
     def get_obsidian_files(self) -> Tuple[List[Path], List[Path]]:
         """Get lists of published and draft files from Obsidian vault"""
@@ -76,7 +101,8 @@ class FileHandler:
                 
                 if self.debug:
                     rel_path = md_file.relative_to(self.vault_root)
-                    self.print_info(f"Found file: {rel_path}, status: {status}")
+                    norm_name = self.normalize_filename(md_file.name)
+                    self.print_info(f"Found file: {rel_path}, status: {status}, normalized: {norm_name}")
                 
                 if status == "published":
                     published_files.append(md_file)
@@ -112,6 +138,12 @@ class FileHandler:
                         rel_path = post_file.relative_to(self.jekyll_root)
                         self.print_info(f"Skipping test file: {rel_path}")
                     continue
+                
+                if self.debug:
+                    rel_path = post_file.relative_to(self.jekyll_root)
+                    norm_name = self.normalize_filename(post_file.name)
+                    self.print_info(f"Found file: {rel_path}, normalized: {norm_name}")
+                
                 posts.append(post_file)
 
         if self.debug:
@@ -126,6 +158,12 @@ class FileHandler:
                         rel_path = asset_file.relative_to(self.jekyll_root)
                         self.print_info(f"Skipping test file: {rel_path}")
                     continue
+                
+                if self.debug:
+                    rel_path = asset_file.relative_to(self.jekyll_root)
+                    norm_name = self.normalize_filename(asset_file.name)
+                    self.print_info(f"Found file: {rel_path}, normalized: {norm_name}")
+                
                 assets.append(asset_file)
 
         if self.debug:

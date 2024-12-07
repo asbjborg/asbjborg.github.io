@@ -4,6 +4,7 @@ import argparse
 import frontmatter
 from pathlib import Path
 from typing import List, Tuple, Dict
+from dotenv import load_dotenv
 
 def is_jekyll_friendly(filename: str) -> bool:
     """Check if a filename is Jekyll-friendly"""
@@ -165,9 +166,12 @@ def normalize_assets(vault_root: str, debug: bool = False, dry_run: bool = False
             if debug:
                 print(f"Error renaming {old_path}: {str(e)}")
 
-if __name__ == "__main__":
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Normalize asset filenames in Obsidian vault')
+def main():
+    # Load environment variables
+    load_dotenv()
+    
+    # Parse arguments
+    parser = argparse.ArgumentParser(description='Normalize asset filenames')
     parser.add_argument('--debug', action='store_true', help='Enable debug output')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be normalized without making changes')
     args = parser.parse_args()
@@ -181,3 +185,6 @@ if __name__ == "__main__":
         exit(1)
     
     normalize_assets(vault_root, debug=debug, dry_run=args.dry_run) 
+
+if __name__ == "__main__":
+    main() 

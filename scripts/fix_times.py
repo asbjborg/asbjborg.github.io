@@ -7,6 +7,7 @@ import frontmatter
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+from dotenv import load_dotenv
 
 def seconds_to_time_str(seconds: int) -> str:
     """Convert seconds since midnight to HH:mm:ss"""
@@ -51,6 +52,9 @@ def fix_frontmatter(metadata: Dict[str, Any]) -> Dict[str, Any]:
     return metadata, changes
 
 def main():
+    # Load environment variables from .env
+    load_dotenv()
+    
     # Parse arguments
     parser = argparse.ArgumentParser(description='Fix integer timestamps and incorrect synced properties')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be done without making changes')

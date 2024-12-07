@@ -4,6 +4,7 @@ from pathlib import Path
 import frontmatter
 from datetime import datetime, timedelta
 from sync.sync import SyncEngine, SyncAction
+from dotenv import load_dotenv
 
 def setup_test_files(test_dir: Path) -> None:
     """Create test files with various sync scenarios"""
@@ -201,6 +202,14 @@ def test_sync_execution():
         # Cleanup
         if test_dir.exists():
             shutil.rmtree(test_dir)
+
+def test_sync():
+    # Load environment variables
+    load_dotenv()
+    
+    # Get environment variables
+    vault_root = os.getenv('SYNC_VAULT_ROOT')
+    jekyll_root = os.getenv('SYNC_JEKYLL_ROOT')
 
 if __name__ == "__main__":
     # Run all tests

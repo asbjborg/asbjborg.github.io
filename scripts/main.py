@@ -1,10 +1,14 @@
 import os
 import argparse
 from pathlib import Path
+from dotenv import load_dotenv
 from sync.sync import SyncEngine
 from utils.backup import BackupHandler
 
 def main():
+    # Load environment variables from .env
+    load_dotenv()
+    
     # Parse arguments
     parser = argparse.ArgumentParser(description='Sync Obsidian posts with Jekyll')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be done without making changes')

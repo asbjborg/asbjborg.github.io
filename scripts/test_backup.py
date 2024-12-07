@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 from datetime import datetime, timedelta
 from utils.backup import BackupHandler
+from dotenv import load_dotenv
 
 def setup_test_files(test_dir: Path) -> None:
     """Create test files for backup testing"""
@@ -35,6 +36,14 @@ def setup_test_files(test_dir: Path) -> None:
         full_path.parent.mkdir(parents=True, exist_ok=True)
         with open(full_path, 'w') as f:
             f.write(content)
+
+def test_backup():
+    # Load environment variables
+    load_dotenv()
+    
+    # Get environment variables
+    vault_root = os.getenv('SYNC_VAULT_ROOT')
+    jekyll_root = os.getenv('SYNC_JEKYLL_ROOT')
 
 def test_backup_dry_run():
     """Test that dry run mode shows changes without making them"""
@@ -188,7 +197,7 @@ def test_backup_rotation():
                 print(f"  {backup_dir.name}: {'✓' if correct_count else '✗'} ({backup_count} backups)")
             else:
                 success = False
-                print(f"  ✗ {backup_dir.name} not created")
+                print(f"  ��� {backup_dir.name} not created")
         
         print(f"\nTest result: {'✓' if success else '✗'}")
         

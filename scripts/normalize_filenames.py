@@ -4,6 +4,7 @@ import frontmatter
 from pathlib import Path
 from typing import List, Dict, Tuple
 from datetime import datetime
+from dotenv import load_dotenv
 
 def is_jekyll_friendly(filename: str) -> bool:
     """Check if a filename is Jekyll-friendly"""
@@ -111,10 +112,12 @@ def normalize_filenames(vault_root: str, debug: bool = False, dry_run: bool = Fa
     elif debug:
         print("\nDry run completed - no files were modified")
 
-if __name__ == "__main__":
-    import argparse
+def main():
+    # Load environment variables
+    load_dotenv()
     
-    parser = argparse.ArgumentParser(description='Normalize markdown filenames in Obsidian vault')
+    # Parse arguments
+    parser = argparse.ArgumentParser(description='Normalize filenames')
     parser.add_argument('--debug', action='store_true', help='Enable debug output')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be renamed without making changes')
     args = parser.parse_args()
@@ -127,3 +130,6 @@ if __name__ == "__main__":
         exit(1)
     
     normalize_filenames(vault_root, debug=debug, dry_run=args.dry_run) 
+
+if __name__ == "__main__":
+    main() 

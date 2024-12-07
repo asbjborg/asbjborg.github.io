@@ -2,9 +2,13 @@ import re
 import os
 from pathlib import Path
 from datetime import datetime
+from dotenv import load_dotenv
 
 class PathConverter:
     def __init__(self, vault_root: str, jekyll_root: str, debug: bool = False):
+        # Load environment variables
+        load_dotenv()
+        
         self.vault_root = Path(vault_root)
         self.jekyll_root = Path(jekyll_root)
         self.debug = debug

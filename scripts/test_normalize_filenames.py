@@ -7,6 +7,7 @@ from normalize_filenames import (
     extract_date_from_path,
     normalize_filenames
 )
+from dotenv import load_dotenv
 
 def test_is_jekyll_friendly():
     """Test the is_jekyll_friendly function with standard test cases"""
@@ -66,6 +67,12 @@ def test_extract_date():
 def test_normalize_filenames():
     """Test the full normalization process with standard test files"""
     print("\nTesting normalize_filenames:")
+    
+    # Load environment variables
+    load_dotenv()
+    
+    # Get environment variables
+    vault_root = os.getenv('SYNC_VAULT_ROOT')
     
     # Create test directory
     test_dir = Path("test_vault")

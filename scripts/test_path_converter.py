@@ -1,10 +1,14 @@
 import os
 from pathlib import Path
 from utils.path_converter import PathConverter
+from dotenv import load_dotenv
 
 def test_post_path_conversion():
     """Test converting post paths between Obsidian and Jekyll formats"""
     print("\nTesting post path conversion:")
+    
+    # Load environment variables
+    load_dotenv()
     
     # Get environment variables
     vault_root = os.getenv('SYNC_VAULT_ROOT')
@@ -52,6 +56,9 @@ def test_post_path_conversion():
 def test_image_path_conversion():
     """Test converting image paths between Obsidian and Jekyll formats"""
     print("\nTesting image path conversion:")
+    
+    # Load environment variables
+    load_dotenv()
     
     # Get environment variables
     vault_root = os.getenv('SYNC_VAULT_ROOT')
@@ -102,6 +109,9 @@ def test_image_path_conversion():
 def test_frontmatter_image_path():
     """Test converting image paths in frontmatter"""
     print("\nTesting frontmatter image path conversion:")
+    
+    # Load environment variables
+    load_dotenv()
     
     # Get environment variables
     vault_root = os.getenv('SYNC_VAULT_ROOT')

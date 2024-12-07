@@ -3,10 +3,14 @@ from pathlib import Path
 from datetime import datetime
 from utils.frontmatter import FrontmatterHandler
 from utils.path_converter import PathConverter
+from dotenv import load_dotenv
 
 def test_obsidian_to_jekyll():
     """Test converting Obsidian frontmatter to Jekyll format"""
     print("\nTesting obsidian_to_jekyll:")
+    
+    # Load environment variables
+    load_dotenv()
     
     # Get environment variables
     vault_root = os.getenv('SYNC_VAULT_ROOT')
@@ -89,6 +93,9 @@ def test_obsidian_to_jekyll():
 def test_jekyll_to_obsidian():
     """Test converting Jekyll frontmatter to Obsidian format"""
     print("\nTesting jekyll_to_obsidian:")
+    
+    # Load environment variables
+    load_dotenv()
     
     # Get environment variables
     vault_root = os.getenv('SYNC_VAULT_ROOT')
@@ -197,6 +204,9 @@ def test_jekyll_to_obsidian():
 def test_synced_field():
     """Test that synced field is properly formatted"""
     print("\nTesting synced field format:")
+    
+    # Load environment variables
+    load_dotenv()
     
     # Get environment variables
     vault_root = os.getenv('SYNC_VAULT_ROOT')

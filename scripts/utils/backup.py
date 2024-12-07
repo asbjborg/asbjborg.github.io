@@ -3,9 +3,13 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
+from dotenv import load_dotenv
 
 class BackupHandler:
     def __init__(self, vault_root: str, jekyll_root: str, debug: bool = False, dry_run: bool = False):
+        # Load environment variables
+        load_dotenv()
+        
         self.vault_root = Path(vault_root)
         self.jekyll_root = Path(jekyll_root)
         self.debug = debug

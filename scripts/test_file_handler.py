@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 import frontmatter
 from sync.file_handler import FileHandler
+from dotenv import load_dotenv
 
 def setup_test_files(test_dir: Path) -> None:
     """Create test files with various statuses"""
@@ -64,6 +65,9 @@ def setup_jekyll_files(jekyll_dir: Path) -> None:
 def test_get_obsidian_files():
     """Test getting Obsidian files with different statuses"""
     print("\nTesting get_obsidian_files:")
+    
+    # Load environment variables
+    load_dotenv()
     
     # Get environment variables
     vault_root = os.getenv('SYNC_VAULT_ROOT')
