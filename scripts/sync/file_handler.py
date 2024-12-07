@@ -27,6 +27,17 @@ class FileHandler:
         self.posts_dir = self.jekyll_root / posts_path
         self.assets_dir = self.jekyll_root / assets_path
         self.debug = debug
+        
+        # Test file patterns to ignore
+        self.test_patterns = [
+            'test', 
+            'testing',
+            'jekyll only post',
+            'jekyll-only-post',
+            'private post',
+            'no status post',
+            'draft post'
+        ]
 
     def print_info(self, text: str) -> None:
         """Print formatted info"""
@@ -37,6 +48,11 @@ class FileHandler:
         """Print a formatted subheader"""
         if self.debug:
             print(f"\n{Colors.BLUE}{text}{Colors.ENDC}")
+    
+    def is_test_file(self, path: Path) -> bool:
+        """Check if a file is a test file"""
+        name = path.stem.lower()
+        return any(pattern.lower() in name for pattern in self.test_patterns)
 
     def get_obsidian_files(self) -> Tuple[List[Path], List[Path]]:
         """Get lists of published and draft files from Obsidian vault"""
@@ -48,6 +64,13 @@ class FileHandler:
 
         for md_file in self.atomics_dir.rglob("*.md"):
             try:
+                # Skip test files
+                if self.is_test_file(md_file):
+                    if self.debug:
+                        rel_path = md_file.relative_to(self.vault_root)
+                        self.print_info(f"Skipping test file: {rel_path}")
+                    continue
+                
                 post = frontmatter.load(md_file)
                 status = post.get('status', None)
                 
@@ -82,14 +105,28 @@ class FileHandler:
 
         # Get posts
         if self.posts_dir.exists():
-            posts = list(self.posts_dir.glob("*.md"))
+            for post_file in self.posts_dir.glob("*.md"):
+                # Skip test files
+                if self.is_test_file(post_file):
+                    if self.debug:
+                        rel_path = post_file.relative_to(self.jekyll_root)
+                        self.print_info(f"Skipping test file: {rel_path}")
+                    continue
+                posts.append(post_file)
 
         if self.debug:
             self.print_subheader(f"Scanning Jekyll assets in: {self.assets_dir}")
 
         # Get assets
         if self.assets_dir.exists():
-            assets = list(self.assets_dir.glob("*.*"))
+            for asset_file in self.assets_dir.glob("*.*"):
+                # Skip test files
+                if self.is_test_file(asset_file):
+                    if self.debug:
+                        rel_path = asset_file.relative_to(self.jekyll_root)
+                        self.print_info(f"Skipping test file: {rel_path}")
+                    continue
+                assets.append(asset_file)
 
         if self.debug:
             self.print_info(f"\nFound {len(posts)} Jekyll posts")
