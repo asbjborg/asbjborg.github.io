@@ -113,13 +113,13 @@ class SyncEngine:
         obsidian_published, obsidian_drafts = self.file_handler.get_obsidian_files()
         jekyll_posts, jekyll_assets = self.file_handler.get_jekyll_files()
         
-        # Create lookup dictionaries
+        # Create lookup dictionaries with normalized names
         obsidian_lookup = {
-            self.path_converter.obsidian_to_jekyll_post(p).name: p 
+            self.file_handler.normalize_filename(self.path_converter.obsidian_to_jekyll_post(p).name): p 
             for p in obsidian_published
         }
         jekyll_lookup = {
-            p.name: p 
+            self.file_handler.normalize_filename(p.name): p 
             for p in jekyll_posts
         }
         
@@ -134,6 +134,7 @@ class SyncEngine:
                 
                 if self.debug:
                     print(f"\nComparing: {obsidian_path.name} <-> {jekyll_path.name}")
+                    print(f"  Normalized name: {jekyll_name}")
                     print(f"  Obsidian mtime: {datetime.fromtimestamp(obsidian_mtime)}")
                     print(f"  Jekyll mtime: {datetime.fromtimestamp(jekyll_mtime)}")
                 
@@ -158,7 +159,8 @@ class SyncEngine:
         for jekyll_name, jekyll_path in jekyll_lookup.items():
             if jekyll_name not in obsidian_lookup:
                 if self.debug:
-                    print(f"\nFound Jekyll-only post: {jekyll_name}")
+                    print(f"\nFound Jekyll-only post: {jekyll_path.name}")
+                    print(f"  Normalized name: {jekyll_name}")
                 
                 # Convert Jekyll path to where it should be in Obsidian
                 obsidian_path = self.path_converter.jekyll_to_obsidian_post(jekyll_path)
@@ -176,6 +178,7 @@ class SyncEngine:
             print(f"\nFound {len(actions)} sync actions needed:")
             for action in actions:
                 print(f"  {action.direction}: {action.source.name} -> {action.target.name}")
+                print(f"    Normalized: {self.file_handler.normalize_filename(action.source.name)}")
         
         return actions
     
@@ -183,6 +186,7 @@ class SyncEngine:
         """Sync a single file according to the action"""
         try:
             self.print_subheader(f"Processing: {action.source.name} -> {action.target.name}")
+            self.print_info(f"Normalized name: {self.file_handler.normalize_filename(action.source.name)}")
             
             # Check source file permissions
             self.check_file_permissions(action.source)
