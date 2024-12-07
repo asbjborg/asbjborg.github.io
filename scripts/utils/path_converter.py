@@ -1,4 +1,5 @@
 import re
+import os
 from pathlib import Path
 from datetime import datetime
 
@@ -7,6 +8,11 @@ class PathConverter:
         self.vault_root = Path(vault_root)
         self.jekyll_root = Path(jekyll_root)
         self.debug = debug
+        
+        # Get paths from environment variables with defaults
+        self.atomics_path = os.getenv('SYNC_VAULT_ATOMICS', 'atomics')
+        self.posts_path = os.getenv('SYNC_JEKYLL_POSTS', '_posts')
+        self.assets_path = os.getenv('SYNC_JEKYLL_ASSETS', 'assets/img/posts')
     
     def obsidian_to_jekyll_post(self, obsidian_path: Path) -> Path:
         """Convert Obsidian post path to Jekyll post path"""
@@ -19,7 +25,7 @@ class PathConverter:
         filename = obsidian_path.stem
         
         # Construct Jekyll path
-        jekyll_path = self.jekyll_root / '_posts' / f"{date_str}-{filename}.md"
+        jekyll_path = self.jekyll_root / self.posts_path / f"{date_str}-{filename}.md"
         
         if self.debug:
             print(f"Converting Obsidian post path: {obsidian_path}")
@@ -37,7 +43,7 @@ class PathConverter:
         year, month, day, name = match.groups()
         
         # Construct Obsidian path
-        obsidian_path = self.vault_root / 'atomics' / year / month / day / f"{name}.md"
+        obsidian_path = self.vault_root / self.atomics_path / year / month / day / f"{name}.md"
         
         if self.debug:
             print(f"Converting Jekyll post path: {jekyll_path}")
@@ -60,7 +66,7 @@ class PathConverter:
         filename = Path(image_path).name
         
         # Construct Jekyll path
-        jekyll_path = f"/assets/img/posts/{filename}"
+        jekyll_path = f"/{self.assets_path}/{filename}"
         
         # Add quotes if in frontmatter
         if in_frontmatter:
@@ -90,7 +96,7 @@ class PathConverter:
         date_path = f"{year}/{month}/{day}"
         
         # Construct Obsidian path
-        obsidian_path = f"atomics/{date_path}/{filename}"
+        obsidian_path = f"{self.atomics_path}/{date_path}/{filename}"
         
         # Create wikilink with proper quoting
         wikilink = f"[[{obsidian_path}]]"
