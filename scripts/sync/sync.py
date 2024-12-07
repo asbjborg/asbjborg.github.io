@@ -43,6 +43,12 @@ class SyncEngine:
         self.jekyll_root = Path(jekyll_root)
         self.debug = debug
         self.dry_run = dry_run
+        
+        # Get paths from environment variables with defaults
+        self.atomics_path = os.getenv('SYNC_VAULT_ATOMICS', 'atomics')
+        self.posts_path = os.getenv('SYNC_JEKYLL_POSTS', '_posts')
+        self.assets_path = os.getenv('SYNC_JEKYLL_ASSETS', 'assets/img/posts')
+        
         self.file_handler = FileHandler(vault_root, jekyll_root, debug)
         self.path_converter = PathConverter(vault_root, jekyll_root, debug)
         self.frontmatter_handler = FrontmatterHandler(self.path_converter, debug, dry_run)
@@ -213,7 +219,7 @@ class SyncEngine:
                 for match in re.finditer(r'!\[\[(.*?)\]\]', post.content):
                     image_path = self.vault_root / match.group(1)
                     if image_path.exists():
-                        target_path = self.jekyll_root / 'assets/img/posts' / image_path.name
+                        target_path = self.jekyll_root / self.assets_path / image_path.name
                         self.print_action(f"Copy image: {image_path.name}", self.dry_run)
                         if not self.dry_run:
                             try:
@@ -250,12 +256,10 @@ class SyncEngine:
                                 raise FileOperationError(f"Failed to copy image {image_path.name}: {str(e)}")
             
             # Create new post with converted frontmatter and content
-            new_post = frontmatter.Post(content, **new_fm)
-            
-            # Write to target with custom YAML formatting
             if not self.dry_run:
                 try:
-                    with open(action.target, 'w') as f:
+                    # Write to target with custom YAML formatting
+                    with open(action.target, 'w', encoding='utf-8') as f:
                         yaml_lines = []
                         yaml_lines.append('---')
                         for key, value in new_fm.items():
@@ -269,9 +273,9 @@ class SyncEngine:
                         f.write('\n'.join(yaml_lines))
                 except Exception as e:
                     raise FileOperationError(f"Failed to write {action.target}: {str(e)}")
-            
-            self.print_action(f"Sync file: {action.target.name}", self.dry_run)
-            
+            else:
+                self.print_action(f"Sync file: {action.target.name}", True)
+                
         except Exception as e:
             error_msg = str(e)
             if isinstance(e, FilePermissionError):
@@ -283,7 +287,6 @@ class SyncEngine:
             
             self.print_error(error_msg)
             self.errors.append((action, error_msg))
-            raise
     
     def sync(self) -> None:
         """Run the sync process"""
