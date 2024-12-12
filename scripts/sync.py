@@ -29,113 +29,85 @@ def load_env():
     return Path(vault_root), Path(jekyll_root)
 
 class SyncDB:
-    """JSON-based storage for sync state"""
-    def __init__(self, root_dir: Path):
-        self.posts_file = root_dir / 'sync_posts.json'
-        self.assets_file = root_dir / 'sync_assets.json'
-        self._posts = self._load_json(self.posts_file)
-        self._assets = self._load_json(self.assets_file)
-    
-    def _load_json(self, path: Path) -> dict:
-        """Load JSON file or return empty dict"""
-        try:
-            if path.exists():
-                with open(path, 'r') as f:
-                    return json.load(f)
-        except Exception as e:
-            logging.error(f"Error loading {path}: {e}")
-        return {}
-    
-    def _save_json(self, path: Path, data: dict):
-        """Save data to JSON file"""
-        try:
-            with open(path, 'w') as f:
-                json.dump(data, f, indent=2)
-        except Exception as e:
-            logging.error(f"Error saving {path}: {e}")
-    
-    def update_post(self, obsidian_path: str, frontmatter: Dict, last_modified: int):
-        """Update post metadata"""
-        # Get Jekyll path
-        date_str = get_date_from_path(Path(obsidian_path))
-        jekyll_name = f"{date_str}-{normalize_filename(Path(obsidian_path).stem)}.md"
-        jekyll_path = f"_posts/{jekyll_name}"
-        
-        # Get featured image path if it exists
-        featured_image = None
-        if frontmatter.get('image'):
-            img_ref = frontmatter['image'].strip('"\' []')
-            if img_ref.startswith('atomics/'):
-                featured_image = img_ref
-        
-        # Calculate time in seconds since midnight
-        time_seconds = seconds_since_midnight(last_modified)
-        
-        # Convert tags to list, filtering out system tags
-        tags = [tag for tag in frontmatter.get('tags', []) if tag not in ['atomic', 'blog']]
-        
-        # Store post data
-        self._posts[obsidian_path] = {
-            'jekyll_path': jekyll_path,
-            'title': frontmatter.get('title', ''),
-            'tags': tags,
-            'time': time_seconds,
-            'featured_image': featured_image,
-            'status': frontmatter.get('status', ''),
-            'last_modified': last_modified
-        }
-        
-        self._save_json(self.posts_file, self._posts)
-    
-    def update_asset(self, obsidian_path: str, jekyll_path: str, post_path: str, last_modified: int):
-        """Update asset metadata"""
-        self._assets[obsidian_path] = {
-            'jekyll_path': jekyll_path,
-            'post_path': post_path,
-            'last_modified': last_modified
-        }
-        self._save_json(self.assets_file, self._assets)
-    
-    def get_published_posts(self) -> List[tuple]:
-        """Get all published posts"""
-        result = []
-        for obsidian_path, data in self._posts.items():
-            if data.get('status') == 'published':
-                result.append((
-                    obsidian_path,
-                    data['jekyll_path'],
-                    data['title'],
-                    json.dumps(data['tags']),
-                    data['time'],
-                    data['featured_image'],
-                    data['last_modified']
-                ))
-        return result
-    
-    def get_post_assets(self, post_path: Optional[str] = None) -> List[tuple]:
-        """Get assets for a post or all assets if post_path is None"""
-        result = []
-        for obsidian_path, data in self._assets.items():
-            if post_path is None or data['post_path'] == post_path:
-                result.append((
-                    obsidian_path,
-                    data['jekyll_path'],
-                    data['last_modified']
-                ))
-        return result
-    
-    def cleanup_assets(self):
-        """Remove assets that aren't referenced by any posts"""
-        valid_posts = {k for k, v in self._posts.items() if v['status'] in ['published', 'draft']}
-        valid_assets = {}
-        
-        for asset_path, data in self._assets.items():
-            if data['post_path'] in valid_posts:
-                valid_assets[asset_path] = data
-        
-        if valid_assets != self._assets:
-            self._assets = valid_assets
-            self._save_json(self.assets_file, self._assets)
+    """Database for tracking synced files"""
+    def __init__(self, db_dir: str):
+        self.db_dir = db_dir
+        self.posts_file = os.path.join(db_dir, 'sync_posts.json')
+        self.assets_file = os.path.join(db_dir, 'sync_assets.json')
+        self._ensure_files_exist()
+
+    def _ensure_files_exist(self):
+        """Ensure database files exist"""
+        for file in [self.posts_file, self.assets_file]:
+            if not os.path.exists(file):
+                with open(file, 'w') as f:
+                    json.dump([], f)
+
+    def get_posts_data(self) -> List[Dict]:
+        """Get all posts data"""
+        with open(self.posts_file, 'r') as f:
+            return json.load(f)
+
+    def get_assets_data(self) -> List[Dict]:
+        """Get all assets data"""
+        with open(self.assets_file, 'r') as f:
+            return json.load(f)
+
+    def save_posts_data(self, data: List[Dict]):
+        """Save posts data"""
+        with open(self.posts_file, 'w') as f:
+            json.dump(data, f, indent=2)
+
+    def save_assets_data(self, data: List[Dict]):
+        """Save assets data"""
+        with open(self.assets_file, 'w') as f:
+            json.dump(data, f, indent=2)
+
+    def get_post(self, obsidian_path: str) -> Optional[Dict]:
+        """Get post data by Obsidian path"""
+        posts = self.get_posts_data()
+        for post in posts:
+            if post['obsidian_path'] == obsidian_path:
+                return post
+        return None
+
+    def get_asset(self, obsidian_path: str, post_path: str) -> Optional[Dict]:
+        """Get asset data by Obsidian path and post path"""
+        assets = self.get_assets_data()
+        for asset in assets:
+            if asset['obsidian_path'] == obsidian_path and asset['post_path'] == post_path:
+                return asset
+        return None
+
+    def add_post(self, post_data: Dict):
+        """Add or update post data"""
+        posts = self.get_posts_data()
+        # Remove existing entry if any
+        posts = [p for p in posts if p['obsidian_path'] != post_data['obsidian_path']]
+        posts.append(post_data)
+        self.save_posts_data(posts)
+
+    def add_asset(self, asset_data: Dict):
+        """Add or update asset data"""
+        assets = self.get_assets_data()
+        # Remove existing entry if any
+        assets = [a for a in assets if not (a['obsidian_path'] == asset_data['obsidian_path'] and 
+                                          a['post_path'] == asset_data['post_path'])]
+        assets.append(asset_data)
+        self.save_assets_data(assets)
+
+    def remove_post(self, obsidian_path: str):
+        """Remove post data"""
+        posts = self.get_posts_data()
+        posts = [p for p in posts if p['obsidian_path'] != obsidian_path]
+        self.save_posts_data(posts)
+
+    def remove_asset(self, obsidian_path: str, post_path: str):
+        """Remove asset data"""
+        assets = self.get_assets_data()
+        assets = [a for a in assets if not (a['obsidian_path'] == obsidian_path and 
+                                          a['post_path'] == post_path)]
+        self.save_assets_data(assets)
 
 def normalize_filename(filename: str) -> str:
     """Normalize filename for Jekyll compatibility"""
