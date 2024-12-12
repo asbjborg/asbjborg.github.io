@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import json
 import sys
 import traceback
+import logging
 
 def load_env():
     """Load environment variables"""
@@ -159,24 +160,26 @@ def safe_datetime_operation(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            print(f"Error in datetime operation: {e}")
-            traceback.print_exc()
+            logging.error(f"Error in time operation: {e}")
             return None
     return wrapper
 
-def get_current_time_str():
+@safe_datetime_operation
+def get_timestamp():
     """Get current time in YYYY-MM-DD format"""
-    return time.strftime('%Y-%m-%d')
+    return time.strftime("%Y-%m-%d")
 
+@safe_datetime_operation
 def seconds_since_midnight(timestamp: int) -> int:
     """Convert Unix timestamp to seconds since midnight"""
     try:
         t = time.localtime(timestamp)
         return t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec
     except Exception as e:
-        print(f"Error converting timestamp: {e}")
+        logging.error(f"Error converting timestamp: {e}")
         return 0
 
+@safe_datetime_operation
 def get_date_from_path(path: Path) -> str:
     """Extract date from Obsidian path"""
     try:
@@ -189,10 +192,26 @@ def get_date_from_path(path: Path) -> str:
                 day = parts[i+3]
                 return f"{year}-{month}-{day}"
     except Exception as e:
-        print(f"Error extracting date from path {path}: {e}")
+        logging.error(f"Error extracting date from path {path}: {e}")
     
     # Default to current date
-    return get_current_time_str()
+    return get_timestamp()
+
+def setup_logging():
+    log_dir = os.getenv('SYNC_LOG_DIR', 'LOGS')
+    os.makedirs(log_dir, exist_ok=True)
+    
+    log_file = os.path.join(log_dir, f"sync_{time.strftime('%Y%m%d_%H%M%S')}.log")
+    
+    logging.basicConfig(
+        level=logging.DEBUG if os.getenv('SYNC_DEBUG') else logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    return logging.getLogger(__name__)
 
 def safe_file_operation(func):
     """Decorator for safe file operations"""
