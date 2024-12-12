@@ -2,15 +2,23 @@
 
 This guide covers the setup and usage of the sync system. For technical details and implementation information, see [Implementation Details](implementation.md).
 
-## System Requirements
+## Initial Setup
 
-### Unix-based Systems (macOS/Linux)
+### Prerequisites
 
-- Python 3.8 or higher
-- fswatch (`brew install fswatch` on macOS, available in most Linux package managers)
-- zsh or bash shell
+1. Install fswatch (required for file watching):
 
-### Windows Users
+   ```bash
+   brew install fswatch  # macOS
+   # or use your Linux package manager
+   ```
+
+2. Fork the Repository
+   - This is a template for setting up your own sync system
+   - Create your own fork on GitHub
+   - Do not use the original repository directly as it's tied to a specific blog
+
+### Windows Compatibility
 
 This system is designed for Unix-based systems. Windows users have two options:
 
@@ -26,49 +34,39 @@ This system is designed for Unix-based systems. Windows users have two options:
    - File watching would need alternative implementation
    - Use at your own risk
 
-## Initial Setup
+### Environment Setup
 
-### 1. Python Environment
+1. Clone your fork:
 
-First, create and activate a virtual environment:
+   ```bash
+   git clone https://github.com/your-username/obsidian-jekyll-sync.git
+   cd obsidian-jekyll-sync
+   ```
 
-```bash
-# Create virtual environment
-python -m venv .venv
+2. Create Python environment:
 
-# Activate it (macOS/Linux)
-source .venv/bin/activate
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
 
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. Configuration Setup
-
-1. Run the setup script to create your local configuration:
+3. Run the setup script:
 
    ```bash
    ./scripts/setup.sh
    ```
 
-   This will:
-   - Copy `.env.example` to `.env`
-   - Create local script copies from templates
-   - Make scripts executable
-
-2. Edit `.env` with your settings:
+4. Configure your paths in `.env`:
 
    ```bash
    # Required Configuration
    SYNC_VAULT_ROOT="/path/to/your/obsidian/vault"
    SYNC_JEKYLL_ROOT="/path/to/your/jekyll/site"
    SYNC_LOG_DIR="/path/to/your/log/directory"
-   
-   # Important: Set Python path to your virtual environment
-   SYNC_PYTHON_PATH="/full/path/to/your/.venv/bin/python"
    ```
 
-3. Optional settings in `.env`:
+5. Optional settings in `.env`:
 
    ```bash
    # Optional Paths
@@ -82,31 +80,12 @@ pip install -r requirements.txt
 
    # Script Configuration
    SYNC_INTERVAL=300                   # Sync interval in seconds
+   SYNC_PYTHON_PATH="/path/to/python"  # Custom Python interpreter
    ```
-
-### 3. Verify Setup
-
-Test your configuration:
-
-```bash
-# Verify Python environment
-$SYNC_PYTHON_PATH --version  # Should show Python version
-
-# Test sync script
-$SYNC_PYTHON_PATH scripts/sync.py
-```
 
 ## Automated Sync
 
 The site includes an automated sync system that watches for changes in your Obsidian vault and syncs them to Jekyll.
-
-### Prerequisites
-
-1. Install fswatch (required for file watching):
-
-   ```bash
-   brew install fswatch
-   ```
 
 ### Control Commands
 

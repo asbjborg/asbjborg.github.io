@@ -1,66 +1,53 @@
-# Jekyll-Obsidian Sync
+# Obsidian to Jekyll Sync
 
-A bidirectional sync engine for Obsidian PKM and Jekyll blog posts. Keep your Obsidian vault and Jekyll blog in sync with automatic conversion of frontmatter, image paths, and more.
+A simple and robust sync engine to publish Obsidian notes to a Jekyll blog.
 
 ## Features
 
-- **Bidirectional Sync**
-  - Obsidian → Jekyll: Convert published notes to blog posts
-  - Jekyll → Obsidian: Import blog posts into your vault
-  - Smart conflict resolution based on modification time
-
-- **Asset Handling**
-  - Automatic image path conversion
-  - Asset file normalization
-  - Proper path handling in both environments
-
-- **Frontmatter Support**
-  - Status-based publishing (published/draft)
-  - Time format conversion
-  - Tag filtering
-  - Wikilink handling
-
-- **Safety Features**
-  - Dry run mode to preview changes
-  - Automatic backups with rotation
-  - Detailed logging
-  - Error handling
-
-## Quick Start
-
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. Set up your environment:
-   ```bash
-   export PKM_ROOT=/path/to/obsidian/vault
-   export JEKYLL_ROOT=/path/to/jekyll/site
-   ```
-
-3. Run the sync:
-   ```bash
-   # Preview changes with dry run
-   python scripts/sync.py --dry-run
-
-   # Run the actual sync
-   python scripts/sync.py
-   ```
-
-## Documentation
-
-- [Usage Guide](docs/usage.md) - Detailed usage instructions
-- [Development Guide](docs/development.md) - Development setup and contribution
-- [API Documentation](docs/api.md) - API reference
+- One-way sync from Obsidian to Jekyll
+- Automated file watching with batched updates
+- Smart path conversion for images
+- SQLite-based file mapping
+- Template-based configuration
 
 ## Requirements
 
-- Python 3.8+
-- python-frontmatter
-- pathlib
-- typing
+- Python 3.8 or higher
+- fswatch (for file monitoring)
+- Jekyll site using Chirpy theme
+
+## Quick Start
+
+### 1. Fork and setup
+
+First, fork this repository to create your own copy. Then:
+
+```bash
+git clone https://github.com/your-username/obsidian-jekyll-sync.git
+cd obsidian-jekyll-sync
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Configure
+
+```bash
+./scripts/setup.sh
+# Edit .env with your paths
+```
+
+### 3. Start sync
+
+```bash
+./scripts/sync_control.sh start
+```
+
+## Documentation
+
+- [Usage Guide](docs/usage.md)
+- [Implementation Details](docs/implementation.md)
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details
+MIT License - see [LICENSE](LICENSE) for details
