@@ -1,5 +1,5 @@
 ---
-title: Sinking Mankind - New track published on Soundcloud
+status: published
 tags:
 - digital-mythology
 - modern-sirens
@@ -7,11 +7,10 @@ tags:
 - social-media
 - music
 - digital-culture
-- AI
 - philosophy
-time: 57787
+- ai
+title: Sinking Mankind - New track published on Soundcloud
 ---
-
 *Exploring modern parallels to ancient myths.*
 
 [Listen to "Sinking Mankind" on Soundcloud](https://soundcloud.com/asbjborg/sinking-mankind)

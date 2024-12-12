@@ -1,5 +1,5 @@
 ---
-title: 'Pair Programming with AI: A Journey of Discovery'
+status: published
 tags:
 - ai
 - development
@@ -7,9 +7,9 @@ tags:
 - learning
 - technology
 - reflection
-time: 41590
+time: 84600
+title: 'Pair Programming with AI: A Journey of Discovery'
 ---
-
 
 ## When Small Changes Lead to Big Insights
 

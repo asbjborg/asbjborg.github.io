@@ -1,5 +1,6 @@
 ---
-title: The Shadow of Perfection - New track published on Soundcloud
+image: /assets/img/posts/narcissus-featured.png
+status: published
 tags:
 - music
 - digital-mythology
@@ -7,12 +8,10 @@ tags:
 - social-media
 - digital-culture
 - self-reflection
-- AI
 - philosophy
-time: 58595
-image: /assets/img/posts/narcissus-featured.png
+- ai
+title: The Shadow of Perfection - New track published on Soundcloud
 ---
-
 *The second chapter in our journey through ancient myths in the digital age.*
 
 [Listen to "The Shadow of Perfection" on SoundCloud](https://soundcloud.com/asbjborg/the-shadow-of-perfection)
