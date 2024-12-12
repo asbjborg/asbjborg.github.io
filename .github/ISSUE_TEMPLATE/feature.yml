@@ -1,0 +1,91 @@
+name: Feature
+description: Template for new features
+title: "[Feature] "
+labels: ["enhancement"]
+assignees:
+  - asbjborg
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to create a feature issue!
+        
+  - type: input
+    id: feature-name
+    attributes:
+      label: Feature Name
+      description: A clear and concise name for the feature
+      placeholder: "e.g., Sync Engine v2"
+    validations:
+      required: true
+      
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Brief description of the feature
+      placeholder: "Describe what this feature will do..."
+    validations:
+      required: true
+      
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Tasks
+      description: List of tasks to implement this feature
+      value: |
+        1. Core Development
+           - [ ] Task 1
+           - [ ] Task 2
+        
+        2. Documentation
+           - [ ] Update technical docs
+           - [ ] Write blog post
+           - [ ] Add user guide
+    validations:
+      required: true
+      
+  - type: textarea
+    id: success-criteria
+    attributes:
+      label: Success Criteria
+      description: What defines this feature as complete?
+      placeholder: |
+        - Criterion 1
+        - Criterion 2
+    validations:
+      required: true
+      
+  - type: textarea
+    id: testing-scope
+    attributes:
+      label: Testing Scope
+      description: What needs to be tested?
+      value: |
+        1. Unit Tests
+           - Test area 1
+           - Test area 2
+        
+        2. Integration Tests
+           - Test scenario 1
+           - Test scenario 2
+    validations:
+      required: true
+      
+  - type: input
+    id: branch
+    attributes:
+      label: Branch Name
+      description: The git branch for this feature
+      placeholder: "feature/name-v2"
+    validations:
+      required: true
+      
+  - type: input
+    id: blog-post
+    attributes:
+      label: Blog Post
+      description: The draft blog post for this feature
+      placeholder: "_drafts/feature-name.md"
+    validations:
+      required: true 

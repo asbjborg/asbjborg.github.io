@@ -10,6 +10,10 @@
   icon: "fab fa-soundcloud"
   url: "https://soundcloud.com/asbjborg"
 
+- type: buymeacoffee
+  icon: "fas fa-coffee"
+  url: "https://www.buymeacoffee.com/asbjborg"
+
 - type: email
   icon: "fas fa-envelope"
   noblank: true # open link in current tab

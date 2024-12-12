@@ -1,4 +1,5 @@
 ---
+title: 'The Harmony of Stillness and Action: A Path to Balanced Living'
 tags:
 - mindfulness
 - balance
@@ -7,9 +8,8 @@ tags:
 - taoism
 - productivity
 - reflection
-time: 78365
-title: 'The Harmony of Stillness and Action: A Path to Balanced Living'
-image: /assets/img/posts/Pasted-image-20241203214844-9f4a62ca.png
+time: 81053
+image: /assets/img/posts/pasted-image-20241203214844.png
 ---
 
 ## The Interplay of Stillness and Action
