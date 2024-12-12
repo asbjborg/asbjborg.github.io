@@ -365,24 +365,21 @@ def convert_image_paths(db: SyncDB, content: str, post_path: str) -> str:
     
     return content
 
-def create_jekyll_frontmatter(obsidian_path: str, db: SyncDB) -> Dict:
-    """Create Jekyll frontmatter from Obsidian frontmatter"""
-    # Read the Obsidian file
-    with open(obsidian_path, 'r', encoding='utf-8') as f:
-        post = frontmatter.load(f)
+def create_jekyll_frontmatter(post_data: tuple, db: SyncDB) -> Dict:
+    """Create Jekyll frontmatter from post data tuple"""
+    obsidian_path, jekyll_path, title, tags_json, time, featured_image, last_modified = post_data
     
     # Create frontmatter with only allowed properties
     frontmatter_dict = {
-        'title': post.get('title', ''),
-        'tags': post.get('tags', []),
-        'time': post.get('time', 0)  # Default to 0 if not set
+        'title': title,
+        'tags': json.loads(tags_json) if tags_json else [],
+        'time': time or 0  # Default to 0 if not set
     }
     
     # Handle featured image
-    featured_image = post.get('image')
     if featured_image:
         # Look up the image path in the assets database
-        assets_data = db.assets.get_data()
+        assets_data = db.get_assets_data()
         for asset in assets_data:
             if asset['obsidian_path'] == featured_image and asset['post_path'] == obsidian_path:
                 frontmatter_dict['image'] = f"/{asset['jekyll_path']}"
