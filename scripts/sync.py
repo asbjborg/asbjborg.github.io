@@ -12,6 +12,7 @@ import json
 import sys
 import traceback
 import logging
+import hashlib
 
 def load_env():
     """Load environment variables"""
@@ -33,81 +34,142 @@ class SyncDB:
     def __init__(self, db_dir: str):
         self.db_dir = db_dir
         self.posts_file = os.path.join(db_dir, 'sync_posts.json')
-        self.assets_file = os.path.join(db_dir, 'sync_assets.json')
         self._ensure_files_exist()
+        self.posts = []  # Initialize as empty list
+        self.load()  # Load data from file
 
     def _ensure_files_exist(self):
         """Ensure database files exist"""
-        for file in [self.posts_file, self.assets_file]:
-            if not os.path.exists(file):
-                with open(file, 'w') as f:
-                    json.dump([], f)
+        if not os.path.exists(self.posts_file):
+            with open(self.posts_file, 'w') as f:
+                json.dump([], f)
 
-    def get_posts_data(self) -> List[Dict]:
-        """Get all posts data"""
-        with open(self.posts_file, 'r') as f:
-            return json.load(f)
+    def _datetime_to_str(self, obj):
+        """Convert datetime objects to ISO format strings"""
+        if isinstance(obj, dict):
+            return {k: self._datetime_to_str(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._datetime_to_str(v) for v in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
 
-    def get_assets_data(self) -> List[Dict]:
-        """Get all assets data"""
-        with open(self.assets_file, 'r') as f:
-            return json.load(f)
+    def load(self):
+        """Load data from file"""
+        try:
+            with open(self.posts_file, 'r') as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    self.posts = data
+                else:
+                    self.posts = []
+        except:
+            self.posts = []
 
-    def save_posts_data(self, data: List[Dict]):
-        """Save posts data"""
+    def save(self):
+        """Save data to file"""
         with open(self.posts_file, 'w') as f:
-            json.dump(data, f, indent=2)
+            # Convert datetime objects to strings before saving
+            json_data = self._datetime_to_str(self.posts)
+            json.dump(json_data, f, indent=2)
 
-    def save_assets_data(self, data: List[Dict]):
-        """Save assets data"""
-        with open(self.assets_file, 'w') as f:
-            json.dump(data, f, indent=2)
-
-    def get_post(self, obsidian_path: str) -> Optional[Dict]:
-        """Get post data by Obsidian path"""
-        posts = self.get_posts_data()
-        for post in posts:
-            if post['obsidian_path'] == obsidian_path:
+    def get_post(self, file_path: str) -> Optional[Dict]:
+        """Get post data by file path"""
+        for post in self.posts:
+            if isinstance(post, dict) and post.get('file_path') == file_path:
                 return post
         return None
 
-    def get_asset(self, obsidian_path: str, post_path: str) -> Optional[Dict]:
-        """Get asset data by Obsidian path and post path"""
-        assets = self.get_assets_data()
-        for asset in assets:
-            if asset['obsidian_path'] == obsidian_path and asset['post_path'] == post_path:
-                return asset
-        return None
-
-    def add_post(self, post_data: Dict):
+    def update_post(self, file_path: str, frontmatter: Dict, content_hash: str):
         """Add or update post data"""
-        posts = self.get_posts_data()
-        # Remove existing entry if any
-        posts = [p for p in posts if p['obsidian_path'] != post_data['obsidian_path']]
-        posts.append(post_data)
-        self.save_posts_data(posts)
+        post = self.get_post(file_path)
+        if post:
+            post['frontmatter'] = frontmatter
+            post['content_hash'] = content_hash
+        else:
+            self.posts.append({
+                'file_path': file_path,
+                'frontmatter': frontmatter,
+                'content_hash': content_hash,
+                'obsidian_path': file_path,
+                'jekyll_path': normalize_filename(os.path.basename(file_path)),
+                'title': frontmatter.get('title', ''),
+                'tags': frontmatter.get('tags', []),
+                'time': frontmatter.get('time', 0),
+                'featured_image': frontmatter.get('image', ''),
+                'last_modified': time_module.time()
+            })
+        self.save()
 
-    def add_asset(self, asset_data: Dict):
-        """Add or update asset data"""
-        assets = self.get_assets_data()
-        # Remove existing entry if any
-        assets = [a for a in assets if not (a['obsidian_path'] == asset_data['obsidian_path'] and 
-                                          a['post_path'] == asset_data['post_path'])]
-        assets.append(asset_data)
-        self.save_assets_data(assets)
+    def update_asset(self, obsidian_path: str, jekyll_path: str, post_path: str = None, content_hash: str = None, last_modified: float = None):
+        """Update asset mapping - no-op since we handle assets in cleanup_assets"""
+        pass
 
-    def remove_post(self, obsidian_path: str):
+    def get_published_posts(self) -> List[Dict]:
+        """Get all published posts"""
+        published = []
+        for post in self.posts:
+            if (isinstance(post, dict) and 
+                isinstance(post.get('frontmatter'), dict) and 
+                post.get('frontmatter', {}).get('status') == 'published'):
+                published.append({
+                    'obsidian_path': post['file_path'],
+                    'jekyll_path': normalize_filename(os.path.basename(post['file_path'])),
+                    'title': post['frontmatter'].get('title', ''),
+                    'tags': post['frontmatter'].get('tags', []),
+                    'time': post['frontmatter'].get('time', 0),
+                    'featured_image': post['frontmatter'].get('image', ''),
+                    'last_modified': post.get('last_modified', time_module.time())
+                })
+        return published
+
+    def get_content_hash(self, file_path: str) -> Optional[str]:
+        """Get content hash for a post"""
+        post = self.get_post(file_path)
+        return post['content_hash'] if post else None
+
+    def remove_post(self, file_path: str):
         """Remove post data"""
-        posts = self.get_posts_data()
-        posts = [p for p in posts if p['obsidian_path'] != obsidian_path]
-        self.save_posts_data(posts)
+        self.posts = [post for post in self.posts if isinstance(post, dict) and post.get('file_path') != file_path]
+        self.save()
 
-    def remove_asset(self, obsidian_path: str, post_path: str):
-        """Remove asset data"""
-        assets = self.get_assets_data()
-        assets = [a for a in assets if not (a['obsidian_path'] == obsidian_path and 
-                                          a['post_path'] == post_path)]
-        self.save_assets_data(assets)
+    def cleanup_assets(self):
+        """Clean up orphaned assets that are no longer referenced by any posts"""
+        # Get all referenced image paths from posts
+        referenced_images = set()
+        for post in self.posts:
+            if not isinstance(post, dict) or not isinstance(post.get('frontmatter'), dict):
+                continue
+                
+            # Check frontmatter image
+            if 'image' in post['frontmatter']:
+                img_path = str(post['frontmatter']['image']).strip('"\' []')
+                if img_path.startswith('/assets/img/posts/'):
+                    referenced_images.add(os.path.basename(img_path))
+
+            # Check content for images
+            if 'content' in post:
+                for match in re.finditer(r'!\[.*?\]\((.*?)\)', str(post.get('content', ''))):
+                    img_path = match.group(1)
+                    if img_path.startswith('/assets/img/posts/'):
+                        referenced_images.add(os.path.basename(img_path))
+
+        # Get all existing assets
+        assets_dir = os.path.join(os.getenv('SYNC_JEKYLL_ROOT'), 'assets', 'img', 'posts')
+        if not os.path.exists(assets_dir):
+            return
+
+        existing_assets = set(f for f in os.listdir(assets_dir) if os.path.isfile(os.path.join(assets_dir, f)))
+
+        # Remove orphaned assets
+        for asset in existing_assets:
+            if asset not in referenced_images:
+                asset_path = os.path.join(assets_dir, asset)
+                try:
+                    os.remove(asset_path)
+                    print(f"Removed orphaned asset: {asset}")
+                except Exception as e:
+                    print(f"Error removing asset {asset}: {e}")
 
 def normalize_filename(filename: str) -> str:
     """Normalize filename for Jekyll compatibility"""
@@ -146,7 +208,7 @@ def extract_frontmatter(content: str) -> Dict:
         
         # Extract and parse frontmatter
         frontmatter = content[4:end]
-        return yaml.safe_load(frontmatter)
+        return yaml.safe_load(frontmatter) or {}
     except yaml.YAMLError as e:
         print(f"Warning: Error parsing frontmatter: {e}")
         return {}
@@ -167,7 +229,7 @@ def extract_content(content: str) -> str:
 def convert_content(content: str, frontmatter_data: Dict) -> tuple[str, Dict]:
     """Convert content and frontmatter from Obsidian to Jekyll format"""
     new_content = content
-    new_frontmatter = frontmatter_data.copy()
+    new_frontmatter = frontmatter_data.copy() if frontmatter_data else {}
     
     # Convert image paths in content
     for match in re.finditer(r'!\[\[(.*?)\]\]', content):
@@ -180,7 +242,7 @@ def convert_content(content: str, frontmatter_data: Dict) -> tuple[str, Dict]:
     
     # Convert frontmatter
     if 'image' in new_frontmatter:
-        img_path = new_frontmatter['image'].strip('"\' []')
+        img_path = str(new_frontmatter['image']).strip('"\' []')
         if img_path.startswith('atomics/'):
             img_name = Path(img_path).name
             normalized_name = normalize_filename(img_name)
@@ -360,200 +422,112 @@ def create_jekyll_frontmatter(post_data: tuple, db: SyncDB) -> Dict:
     return frontmatter_dict
 
 def sync_files(dry_run: bool = False, debug: bool = False):
-    """Sync files from Obsidian to Jekyll"""
-    # Get log level from environment
-    log_enabled = os.getenv('SYNC_LOG', 'false').lower() == 'true'
-    print(f"=== Sync Started at {time_module.strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
-    
-    if debug:
-        print(f"Debug mode: {debug}")
-        print(f"Log mode: {log_enabled}")
-    
-    # Load paths
-    vault_root, jekyll_root = load_env()
+    """Sync files between Obsidian and Jekyll"""
+    vault_root = Path(os.getenv('SYNC_VAULT_ROOT'))
+    jekyll_root = Path(os.getenv('SYNC_JEKYLL_ROOT'))
     atomics_dir = vault_root / 'atomics'
     posts_dir = jekyll_root / '_posts'
-    assets_dir = jekyll_root / 'assets/img/posts'
-    
-    if debug:
-        print(f"Vault root: {vault_root}")
-        print(f"Jekyll root: {jekyll_root}")
-        print(f"Atomics dir: {atomics_dir}")
-        print(f"Posts dir: {posts_dir}")
-        print(f"Assets dir: {assets_dir}")
-    
+    assets_dir = jekyll_root / 'assets' / 'img' / 'posts'
+    db_dir = jekyll_root / '.sync'
+
+    print(f"Vault root: {vault_root}")
+    print(f"Jekyll root: {jekyll_root}")
+    print(f"Atomics dir: {atomics_dir}")
+    print(f"Posts dir: {posts_dir}")
+    print(f"Assets dir: {assets_dir}")
+
     # Create directories if they don't exist
-    for dir in [atomics_dir, posts_dir, assets_dir]:
-        dir.mkdir(parents=True, exist_ok=True)
-    
+    os.makedirs(db_dir, exist_ok=True)
+    os.makedirs(posts_dir, exist_ok=True)
+    os.makedirs(assets_dir, exist_ok=True)
+
     # Initialize database
-    db = SyncDB(jekyll_root)
-    
-    # Track valid posts and assets
-    valid_posts = set()
-    valid_assets = set()
-    
-    # First pass: Update database from Obsidian
-    if log_enabled:
-        print("Scanning Obsidian files...")
-    if debug:
-        print(f"Looking for .md files in: {atomics_dir}")
-    
-    for md_file in atomics_dir.rglob('*.md'):
-        try:
-            rel_path = str(md_file.relative_to(vault_root))
-            if debug:
-                print(f"Found file: {rel_path}")
-            
-            with open(md_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-                frontmatter_data = extract_frontmatter(content)
-                
-                # Skip if no frontmatter or no status
-                if not frontmatter_data:
-                    if debug:
-                        print(f"Skipping {md_file.name} - no frontmatter")
+    db = SyncDB(str(db_dir))
+
+    # Scan Obsidian files
+    print("Scanning Obsidian files...")
+    for root, _, files in os.walk(atomics_dir):
+        print(f"Looking for .md files in: {root}")
+        for file in files:
+            if not file.endswith('.md'):
+                continue
+
+            obsidian_path = os.path.join(root, file)
+            print(f"Found file: {os.path.relpath(obsidian_path, vault_root)}")
+
+            try:
+                # Read file content
+                with open(obsidian_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # Extract frontmatter
+                frontmatter = extract_frontmatter(content)
+                if not frontmatter.get('status'):
+                    print(f"Skipping {file} - no status")
                     continue
-                
-                status = frontmatter_data.get('status', '')
-                if not status:
-                    if debug:
-                        print(f"Skipping {md_file.name} - no status")
+
+                # Calculate content hash
+                content_hash = hashlib.md5(content.encode()).hexdigest()
+
+                # Check if content has changed
+                if content_hash == db.get_content_hash(obsidian_path):
                     continue
-                
-                # Update post in database
-                last_modified = int(md_file.stat().st_mtime)
-                db.update_post(rel_path, frontmatter_data, last_modified)
-                
-                # Track assets if published/draft
-                if status.lower() in ['published', 'draft']:
-                    # Extract image references
-                    for match in re.finditer(r'!\[\[(.*?)\]\]', content):
-                        img_ref = match.group(1)
-                        if img_ref and img_ref.startswith('atomics/'):
-                            img_path = atomics_dir / '/'.join(img_ref.split('/')[1:])
-                            if img_path.exists() and img_path.suffix.lower() in ['.jpg', '.jpeg', '.png', '.gif']:
-                                jekyll_name = normalize_filename(img_path.name)
-                                db.update_asset(str(img_path.relative_to(vault_root)),
-                                          f"assets/img/posts/{jekyll_name}",
-                                          rel_path, int(img_path.stat().st_mtime))
-                                valid_assets.add(img_path)
-                    
-                    # Check frontmatter image
-                    if frontmatter_data.get('image'):
-                        img_ref = frontmatter_data['image'].strip('"\' []')
-                        if img_ref.startswith('atomics/'):
-                            img_path = atomics_dir / '/'.join(img_ref.split('/')[1:])
-                            if img_path.exists() and img_path.suffix.lower() in ['.jpg', '.jpeg', '.png', '.gif']:
-                                jekyll_name = normalize_filename(img_path.name)
-                                db.update_asset(str(img_path.relative_to(vault_root)),
-                                          f"assets/img/posts/{jekyll_name}",
-                                          rel_path, int(img_path.stat().st_mtime))
-                                valid_assets.add(img_path)
-        except Exception as e:
-            print(f"Error processing {md_file}: {e}")
-    
-    # Second pass: Sync published posts to Jekyll
-    if log_enabled:
-        print("Syncing published posts...")
+
+                # Convert content
+                new_content, new_frontmatter = convert_content(content, frontmatter)
+
+                # Update database
+                db.update_post(obsidian_path, frontmatter, content_hash)
+
+                # Copy images
+                for match in re.finditer(r'!\[\[(.*?)\]\]', content):
+                    img_path = match.group(1)
+                    if img_path.startswith('atomics/'):
+                        img_name = Path(img_path).name
+                        normalized_name = normalize_filename(img_name)
+                        src = vault_root / img_path
+                        dst = assets_dir / normalized_name
+                        if src.exists():
+                            shutil.copy2(src, dst)
+                            db.update_asset(str(src), str(dst))
+
+            except Exception as e:
+                print(f"Error processing {obsidian_path}: {e}")
+                if debug:
+                    traceback.print_exc()
+
+    # Sync published posts
+    print("Syncing published posts...")
     for post in db.get_published_posts():
-        obsidian_path, jekyll_path, title, tags_json, time, featured_image, last_modified = post
-        
-        # Get full paths
-        obsidian_file = vault_root / obsidian_path
-        jekyll_file = jekyll_root / jekyll_path
-        valid_posts.add(obsidian_path)  # Track by obsidian_path for asset lookup
-        
-        # Check if Jekyll file needs update
-        needs_update = True
-        if jekyll_file.exists():
-            jekyll_mtime = int(jekyll_file.stat().st_mtime)
-            needs_update = last_modified > jekyll_mtime
-        
-        if needs_update and not dry_run:
-            if jekyll_file.exists():
-                print(f"[SYNC_CHANGE] Post updated: {jekyll_file.name}")
-            else:
-                print(f"[SYNC_CHANGE] Post created: {jekyll_file.name}")
-            
-            # Read and process content
+        try:
+            # Read Obsidian file
+            obsidian_file = post['obsidian_path']
             with open(obsidian_file, 'r', encoding='utf-8') as f:
                 content = f.read()
-                content_without_frontmatter = extract_content(content)
-                
-                # Convert image paths in content
-                converted_content = convert_image_paths(db, content_without_frontmatter, obsidian_path)
-                
-                # Create Jekyll frontmatter with only allowed properties
-                jekyll_frontmatter = create_jekyll_frontmatter(post, db)
-                
-                # Write Jekyll file
-                jekyll_file.parent.mkdir(parents=True, exist_ok=True)
-                with open(jekyll_file, 'w', encoding='utf-8') as jf:
-                    jf.write('---\n')
-                    yaml.dump(jekyll_frontmatter, jf, allow_unicode=True, sort_keys=False)
-                    jf.write('---\n\n')
-                    jf.write(converted_content)
-                
-                # Update file timestamp
-                os.utime(jekyll_file, (last_modified, last_modified))
-    
-    # Third pass: Sync assets
-    if log_enabled:
-        print("Syncing assets...")
-    for post_path in valid_posts:
-        for asset in db.get_post_assets(post_path):
-            obsidian_path, jekyll_path, last_modified = asset
-            
-            # Get full paths
-            obsidian_file = vault_root / obsidian_path
-            jekyll_file = jekyll_root / jekyll_path
-            
-            # Copy to Jekyll if newer
-            if not dry_run and obsidian_file.exists():
-                if not jekyll_file.exists() or last_modified > int(jekyll_file.stat().st_mtime):
-                    if jekyll_file.exists():
-                        print(f"[SYNC_CHANGE] Asset updated: {jekyll_file.name}")
-                    else:
-                        print(f"[SYNC_CHANGE] Asset created: {jekyll_file.name}")
-                    jekyll_file.parent.mkdir(parents=True, exist_ok=True)
-                    try:
-                        shutil.copy2(obsidian_file, jekyll_file)
-                    except Exception as e:
-                        print(f"Error copying {obsidian_file}: {e}")
-    
-    # Final pass: Cleanup orphaned assets
-    if log_enabled:
-        print("Cleaning up orphaned assets...")
+
+            # Convert content
+            frontmatter = extract_frontmatter(content)
+            new_content, new_frontmatter = convert_content(content, frontmatter)
+
+            # Write Jekyll file
+            jekyll_file = os.path.join(posts_dir, post['jekyll_path'])
+            if not dry_run:
+                os.makedirs(os.path.dirname(jekyll_file), exist_ok=True)
+                with open(jekyll_file, 'w', encoding='utf-8') as f:
+                    f.write('---\n')
+                    f.write(yaml.dump(new_frontmatter, allow_unicode=True))
+                    f.write('---\n')
+                    f.write(new_content)
+                print(f"[SYNC_CHANGE] Post created: {post['jekyll_path']}")
+
+        except Exception as e:
+            print(f"Error syncing post {post['obsidian_path']}: {e}")
+            if debug:
+                traceback.print_exc()
+
+    # Clean up orphaned assets
+    print("Syncing assets...")
     db.cleanup_assets()
-    
-    # Clean up invalid Jekyll posts
-    if log_enabled:
-        print("Cleaning up Jekyll posts...")
-    if debug:
-        print("Valid posts from database:")
-        for post in db.get_published_posts():
-            print(f"  - {post[1]}")  # jekyll_path
-    
-    for md_file in posts_dir.glob('*.md'):
-        jekyll_path = str(md_file.relative_to(jekyll_root))
-        if debug:
-            print(f"Checking Jekyll post: {jekyll_path}")
-        if jekyll_path not in [post[1] for post in db.get_published_posts()]:
-            print(f"[SYNC_CHANGE] Post deleted: {md_file.name}")
-            if not dry_run:
-                md_file.unlink()
-    
-    # Clean up unused assets
-    print("Cleaning up unused assets...")
-    for img_path in assets_dir.glob('*.*'):
-        jekyll_path = f"assets/img/posts/{img_path.name}"
-        if jekyll_path not in [asset[1] for asset in db.get_post_assets(None)]:
-            print(f"[SYNC_CHANGE] Asset deleted: {img_path.name}")
-            if not dry_run:
-                img_path.unlink()
-    
-    print(f"=== Sync Completed at {time_module.strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
 
 def main():
     """Main entry point"""
