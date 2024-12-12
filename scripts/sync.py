@@ -371,11 +371,15 @@ def create_jekyll_frontmatter(obsidian_path: str, db: SyncDB) -> Dict:
     with open(obsidian_path, 'r', encoding='utf-8') as f:
         post = frontmatter.load(f)
     
-    # Copy frontmatter
-    frontmatter_dict = dict(post.metadata)
+    # Create frontmatter with only allowed properties
+    frontmatter_dict = {
+        'title': post.get('title', ''),
+        'tags': post.get('tags', []),
+        'time': post.get('time', 0)  # Default to 0 if not set
+    }
     
     # Handle featured image
-    featured_image = frontmatter_dict.get('image')
+    featured_image = post.get('image')
     if featured_image:
         # Look up the image path in the assets database
         assets_data = db.assets.get_data()
