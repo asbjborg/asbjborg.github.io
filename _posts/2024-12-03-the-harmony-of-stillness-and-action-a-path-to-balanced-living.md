@@ -1,6 +1,6 @@
 ---
+title: "The Harmony of Stillness and Action: A Path to Balanced Living"
 image: /assets/img/posts/pasted-image-20241203214844.png
-status: published
 tags:
 - mindfulness
 - balance
@@ -11,8 +11,8 @@ tags:
 - reflection
 - development
 - ai
-title: 'The Harmony of Stillness and Action: A Path to Balanced Living'
 ---
+
 ## The Interplay of Stillness and Action
 
 In the dance of existence, there is a profound tension between **stillness** and **action**. These two forces, though seemingly opposite, are not in conflict—they are complementary.

@@ -1,5 +1,4 @@
 ---
-status: published
 tags:
 - ai
 - development
@@ -8,8 +7,9 @@ tags:
 - technology
 - reflection
 time: 84600
-title: 'Pair Programming with AI: A Journey of Discovery'
+title: "Pair Programming with AI: A Journey of Discovery"
 ---
+
 
 ## When Small Changes Lead to Big Insights
 
