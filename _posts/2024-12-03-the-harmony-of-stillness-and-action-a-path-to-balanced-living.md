@@ -8,7 +8,8 @@ tags:
 - taoism
 - productivity
 - reflection
-time: 55852
+- development
+time: 59043
 image: /assets/img/posts/pasted-image-20241203214844.png
 ---
 

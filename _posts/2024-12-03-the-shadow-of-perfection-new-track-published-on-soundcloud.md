@@ -7,7 +7,9 @@ tags:
 - social-media
 - digital-culture
 - self-reflection
-time: 56912
+- AI
+- philosophy
+time: 58595
 image: /assets/img/posts/narcissus-featured.png
 ---
 

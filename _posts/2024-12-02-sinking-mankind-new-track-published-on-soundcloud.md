@@ -7,7 +7,9 @@ tags:
 - social-media
 - music
 - digital-culture
-time: 56917
+- AI
+- philosophy
+time: 57787
 ---
 
 *Exploring modern parallels to ancient myths.*
