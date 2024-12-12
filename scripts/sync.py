@@ -365,26 +365,26 @@ def convert_image_paths(db: SyncDB, content: str, post_path: str) -> str:
     
     return content
 
-def create_jekyll_frontmatter(post_data, assets_db) -> Dict:
-    """Create Jekyll frontmatter with only allowed properties"""
-    obsidian_path, jekyll_path, title, tags_json, time, featured_image, last_modified = post_data
+def create_jekyll_frontmatter(obsidian_path: str, db: SyncDB) -> Dict:
+    """Create Jekyll frontmatter from Obsidian frontmatter"""
+    # Read the Obsidian file
+    with open(obsidian_path, 'r', encoding='utf-8') as f:
+        post = frontmatter.load(f)
     
-    frontmatter = {
-        'title': title,
-        'tags': json.loads(tags_json),
-        'time': time  # Already in seconds since midnight
-    }
+    # Copy frontmatter
+    frontmatter_dict = dict(post.metadata)
     
-    # Convert featured image path if it exists
+    # Handle featured image
+    featured_image = frontmatter_dict.get('image')
     if featured_image:
-        c = assets_db.cursor()
-        c.execute('SELECT jekyll_path FROM assets WHERE obsidian_path = ? AND post_path = ?',
-                 (featured_image, obsidian_path))
-        result = c.fetchone()
-        if result:
-            frontmatter['image'] = f"/{result[0]}"
+        # Look up the image path in the assets database
+        assets_data = db.assets.get_data()
+        for asset in assets_data:
+            if asset['obsidian_path'] == featured_image and asset['post_path'] == obsidian_path:
+                frontmatter_dict['image'] = f"/{asset['jekyll_path']}"
+                break
     
-    return frontmatter
+    return frontmatter_dict
 
 def sync_files(dry_run: bool = False, debug: bool = False):
     """Sync files from Obsidian to Jekyll"""
