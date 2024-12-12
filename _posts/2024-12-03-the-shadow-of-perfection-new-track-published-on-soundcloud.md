@@ -8,7 +8,7 @@ tags:
 - social-media
 - digital-culture
 - self-reflection
-time: 46134
+time: 55888
 image: /assets/img/posts/narcissus-featured.png
 ---
 
@@ -26,7 +26,7 @@ Through the lens of Narcissus's myth, we explore how social media and digital pl
 
 "The Shadow of Perfection" continues our exploration of how ancient myths illuminate modern digital life. Where "Sinking Mankind" examined the Sirens' call—external temptations amplified by algorithms drawing us into digital waters—this chapter turns inward, exploring how those same forces transform us into unwitting Narcissus figures, trapped in pools of our own reflection.
 
-**Today, we are all Narcissus.**
+***Today, we are all Narcissus.***
 
 This isn't just a metaphor—it's a technical reality. The same recommendation engines that once amplified the Sirens' song now craft our digital reflections, using RLHF (Reinforcement Learning with Human Feedback) and engagement optimization to create pools that know us better than we know ourselves. We've moved from being lured by external content to being captivated by our own curated images, trapped in recursive loops of self-reflection.
 
