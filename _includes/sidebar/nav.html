@@ -1,0 +1,29 @@
+<!--
+  Navigation menu
+-->
+<nav>
+  <ul class="nav flex-column">
+    {% assign nav_items = site.data.locales[site.lang].tabs %}
+    {% for item in nav_items %}
+      {% assign item_name = item[0] %}
+      {% if item_name != 'categories' %}
+        {% assign item_url = item_name | prepend: '/' | append: '/' %}
+        {% if item_url == page.url %}
+          <li class="nav-item active">
+            <a href="{{ item_url | relative_url }}" class="nav-link">
+              <i class="fa-fw {{ site.data.sidebar[item_name].icon }} me-2"></i>
+              <span>{{ item[1] }}</span>
+            </a>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a href="{{ item_url | relative_url }}" class="nav-link">
+              <i class="fa-fw {{ site.data.sidebar[item_name].icon }} me-2"></i>
+              <span>{{ item[1] }}</span>
+            </a>
+          </li>
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+  </ul>
+</nav> 

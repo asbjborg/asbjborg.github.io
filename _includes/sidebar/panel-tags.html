@@ -1,0 +1,17 @@
+<!--
+  The trending tags list
+-->
+
+{%- include functions.html func='get_trending_tags' -%}
+{% assign trending_tags = return %}
+
+{% if trending_tags.size > 0 %}
+  <section class="panel panel-tags">
+    <div class="panel-heading">{{ site.data.locales[site.lang].panel.trending_tags }}</div>
+    <div class="d-flex flex-wrap mt-3 mb-1 me-3">
+      {% for tag in trending_tags %}
+        <a class="post-tag btn btn-outline-primary" href="{{ site.baseurl }}/tags/{{ tag | slugify | url_encode }}/">{{ tag }}</a>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %} 
