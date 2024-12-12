@@ -10,6 +10,7 @@ from datetime import datetime
 import yaml
 from dotenv import load_dotenv
 import json
+import subprocess
 
 def load_env():
     """Load environment variables"""
@@ -538,6 +539,37 @@ def sync_files(dry_run: bool = False, debug: bool = False):
                 img_path.unlink()
     
     db.close()
+    
+    # Git operations if on main branch and not in dry run
+    if not dry_run:
+        try:
+            # Check if we're on main branch
+            result = subprocess.run(['git', 'branch', '--show-current'], capture_output=True, text=True)
+            current_branch = result.stdout.strip()
+            
+            if current_branch == 'main':
+                # Check for changes
+                result = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True)
+                if result.stdout.strip():
+                    # Stage all changes
+                    subprocess.run(['git', 'add', '.'], check=True)
+                    
+                    # Commit changes
+                    commit_msg = "sync: Update from Obsidian vault"
+                    subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
+                    
+                    # Push changes
+                    subprocess.run(['git', 'push'], check=True)
+                    print("[GIT] Changes committed and pushed to main")
+                else:
+                    if debug:
+                        print("[GIT] No changes to commit")
+            else:
+                if debug:
+                    print(f"[GIT] Not on main branch (current: {current_branch})")
+        except Exception as e:
+            print(f"[GIT] Error during git operations: {e}")
+    
     print(f"=== Sync Completed at {datetime.now().strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
 
 def main():
