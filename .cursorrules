@@ -25,24 +25,28 @@
 - Respect existing prettier/lint preferences
 - Check if files exist before creating new ones
 - Add debug logging when code doesn't work as expected
-   - Debug mode is controlled by SYNC_DEBUG in .env
-   - Use print statements liberally when SYNC_DEBUG=true
+  - Debug mode is controlled by SYNC_DEBUG in .env
+  - Use print statements liberally when SYNC_DEBUG=true
 - Read git commits to understand code history
 
 ### Multi-line Content
 
 - When using commit_message.txt for multi-line content:
   1. ALWAYS clean the file first:
+
      ```bash
      echo "" > commit_message.txt  # Clear the file
      ```
+
   2. Write new content to the file
   3. Use the file for commands:
+
      ```bash
      gh issue edit 6 -F commit_message.txt
      gh issue comment 6 -F commit_message.txt
      git commit -F commit_message.txt
      ```
+
   4. Verify the file content before using
 
 - Common uses:
@@ -67,8 +71,8 @@
 
 1. Feature Status
    - Track features in `docs/strategy/implementation/checklist.json`
-   - Use `scripts/progress_tracing.py` to check implementation status
    - Keep checklist.json updated with actual values
+      - keep the checklist updated, so read it and check the status of the tasks frequently!
 
 ### Prerequisites
 
@@ -187,6 +191,8 @@ Related branch: feature/name-v2
    - if you find yourself writing a lot of code to solve a problem, you are probably over-engineering the solution. take a step back and re-evaluate your approach.
    - the solution should be simple and easy to understand, not complex and convoluted
    - the solution is for an individual user, not a large organization with lots of processes and procedures
+
+5. when updating code, please make sure not to include too much content in your find/replace operation. you have a habit of replacing big chunks of code, when you only need to rename a parameter for example.
 
 ### Sync Rules
 
