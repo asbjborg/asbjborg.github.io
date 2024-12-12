@@ -3,10 +3,22 @@ layout: page
 # All the Tags of posts.
 ---
 
+<!-- Debug: Raw site.tags data -->
+<div style="display: none">
+  {% for tag in site.tags %}
+    Tag: {{ tag | first }} ({{ tag | last | size }} posts)
+    Posts:
+    {% for post in tag.last %}
+      - {{ post.path }}: {{ post.title }}
+    {% endfor %}
+  {% endfor %}
+</div>
+
 <div id="tags" class="d-flex flex-wrap mx-xl-2">
   {% assign tags = '' | split: '' %}
   {% for t in site.tags %}
-    {% assign tags = tags | push: t[0] %}
+    {% assign tag_name = t[0] | downcase %}
+    {% assign tags = tags | push: tag_name %}
   {% endfor %}
 
   {% assign sorted_tags = tags | sort_natural %}
@@ -14,7 +26,7 @@ layout: page
   {% for t in sorted_tags %}
     <div>
       <a class="tag" href="{{ t | slugify | url_encode | prepend: '/tags/' | append: '/' | relative_url }}">
-        {{ t -}}
+        {{ t | downcase -}}
         <span class="text-muted">{{ site.tags[t].size }}</span>
       </a>
     </div>
