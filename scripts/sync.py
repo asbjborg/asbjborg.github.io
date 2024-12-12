@@ -112,9 +112,21 @@ class SyncDB:
             if (isinstance(post, dict) and 
                 isinstance(post.get('frontmatter'), dict) and 
                 post.get('frontmatter', {}).get('status') == 'published'):
+                # Extract date from file path
+                path_parts = post['file_path'].split('/')
+                if len(path_parts) >= 4 and path_parts[-4].isdigit() and path_parts[-3].isdigit() and path_parts[-2].isdigit():
+                    year = path_parts[-4]
+                    month = path_parts[-3].zfill(2)
+                    day = path_parts[-2].zfill(2)
+                    jekyll_name = f"{year}-{month}-{day}-{normalize_filename(os.path.basename(post['file_path']))}"
+                else:
+                    # Fallback to current date if path doesn't contain date
+                    current_time = time_module.localtime()
+                    jekyll_name = f"{current_time.tm_year}-{current_time.tm_mon:02d}-{current_time.tm_mday:02d}-{normalize_filename(os.path.basename(post['file_path']))}"
+                
                 published.append({
                     'obsidian_path': post['file_path'],
-                    'jekyll_path': normalize_filename(os.path.basename(post['file_path'])),
+                    'jekyll_path': jekyll_name,
                     'title': post['frontmatter'].get('title', ''),
                     'tags': post['frontmatter'].get('tags', []),
                     'time': post['frontmatter'].get('time', 0),
@@ -228,11 +240,35 @@ def extract_content(content: str) -> str:
 
 def convert_content(content: str, frontmatter_data: Dict) -> tuple[str, Dict]:
     """Convert content and frontmatter from Obsidian to Jekyll format"""
-    new_content = content
-    new_frontmatter = frontmatter_data.copy() if frontmatter_data else {}
+    # Extract content without frontmatter
+    content_without_frontmatter = extract_content(content)
+    new_content = content_without_frontmatter
+    
+    # Start with empty frontmatter and only copy whitelisted properties
+    new_frontmatter = {}
+    allowed_properties = {
+        'title',      # Post title
+        'tags',       # Post tags
+        'time',       # Reading time
+        'image',      # Featured image
+        'status',     # Post status (published/draft)
+        'excerpt',    # Post excerpt/description
+        'categories', # Post categories
+        'author',     # Post author
+        'pin',        # Whether to pin the post
+        'math',       # Whether post contains math
+        'mermaid',    # Whether post contains mermaid diagrams
+        'comments',   # Whether to enable comments
+        'toc'         # Whether to show table of contents
+    }
+    
+    # Copy only allowed properties
+    for prop in allowed_properties:
+        if prop in frontmatter_data:
+            new_frontmatter[prop] = frontmatter_data[prop]
     
     # Convert image paths in content
-    for match in re.finditer(r'!\[\[(.*?)\]\]', content):
+    for match in re.finditer(r'!\[\[(.*?)\]\]', new_content):
         old_path = match.group(1)
         if old_path.startswith('atomics/'):
             img_name = Path(old_path).name
@@ -240,7 +276,7 @@ def convert_content(content: str, frontmatter_data: Dict) -> tuple[str, Dict]:
             new_path = f'/assets/img/posts/{normalized_name}'
             new_content = new_content.replace(f'![[{old_path}]]', f'![{Path(old_path).stem}]({new_path})')
     
-    # Convert frontmatter
+    # Convert frontmatter image if present
     if 'image' in new_frontmatter:
         img_path = str(new_frontmatter['image']).strip('"\' []')
         if img_path.startswith('atomics/'):
@@ -255,10 +291,6 @@ def convert_content(content: str, frontmatter_data: Dict) -> tuple[str, Dict]:
             new_frontmatter['time'] = h * 3600 + m * 60 + s
         except:
             del new_frontmatter['time']
-    
-    # Remove Obsidian-specific fields
-    for field in ['moc', 'upsert', 'upserted', 'synced', 'status', 'date']:
-        new_frontmatter.pop(field, None)
     
     # Filter system tags
     if 'tags' in new_frontmatter:
@@ -444,6 +476,9 @@ def sync_files(dry_run: bool = False, debug: bool = False):
     # Initialize database
     db = SyncDB(str(db_dir))
 
+    # Track valid posts for cleanup
+    valid_posts = set()
+
     # Scan Obsidian files
     print("Scanning Obsidian files...")
     for root, _, files in os.walk(atomics_dir):
@@ -511,6 +546,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
 
             # Write Jekyll file
             jekyll_file = os.path.join(posts_dir, post['jekyll_path'])
+            valid_posts.add(post['jekyll_path'])
             if not dry_run:
                 os.makedirs(os.path.dirname(jekyll_file), exist_ok=True)
                 with open(jekyll_file, 'w', encoding='utf-8') as f:
@@ -524,6 +560,17 @@ def sync_files(dry_run: bool = False, debug: bool = False):
             print(f"Error syncing post {post['obsidian_path']}: {e}")
             if debug:
                 traceback.print_exc()
+
+    # Clean up orphaned posts
+    print("Cleaning up orphaned posts...")
+    for post_file in os.listdir(posts_dir):
+        if post_file not in valid_posts:
+            post_path = os.path.join(posts_dir, post_file)
+            try:
+                os.remove(post_path)
+                print(f"Removed orphaned post: {post_file}")
+            except Exception as e:
+                print(f"Error removing post {post_file}: {e}")
 
     # Clean up orphaned assets
     print("Syncing assets...")
