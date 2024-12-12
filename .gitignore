@@ -1,20 +1,70 @@
-_site
-.sass-cache
-.jekyll-cache
+# Jekyll
+_site/
+.sass-cache/
+.jekyll-cache/
 .jekyll-metadata
-vendor
-.venv/
+vendor/
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# Generated Scripts
+scripts/watch_sync.sh
+scripts/sync_control.sh
+scripts/sync_wrapper.sh
+
+# Runtime Files
+.watch.pid
+.last_sync
+.pending_changes
+sync.db
+*.db
+*.db-journal
+
+# Logs
+LOGS/
+*.log
+
+# Environment
 .env
 
-# macOS system files
-.DS_Store
-~/
-com.asbjborg.obsidian-to-blog-sync.plist
-
-# Cursor workarounds for github
+# Cursor workarounds
 commit_message.txt
 
-# cursor
-.cursorrules
+# Legacy files
+*.plist

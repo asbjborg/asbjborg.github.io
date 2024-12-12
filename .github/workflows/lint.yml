@@ -1,0 +1,41 @@
+name: Lint Markdown
+
+on:
+  push:
+    paths:
+      - '**.md'
+  pull_request:
+    paths:
+      - '**.md'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auto-fix markdown formatting
+        uses: DavidAnson/markdownlint-cli2-action@v13
+        with:
+          globs: |
+            _posts/*.md
+            _tabs/*.md
+            *.md
+          fix: true
+
+      - name: Commit auto-fixes
+        if: steps.auto-fix.outputs.fixed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git commit -m "style: Auto-fix markdown formatting"
+          git push
+
+      - name: Lint Markdown files
+        uses: DavidAnson/markdownlint-cli2-action@v13
+        with:
+          globs: |
+            _posts/*.md
+            _tabs/*.md
+            *.md 

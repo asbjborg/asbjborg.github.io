@@ -1,53 +1,53 @@
-# asbjborg.github.io
+# Obsidian to Jekyll Sync
 
-My personal blog, built with Jekyll and enhanced with Obsidian sync functionality. The blog automatically syncs content from my Obsidian vault, handling both posts and media files.
+A simple and robust sync engine to publish Obsidian notes to a Jekyll blog.
 
 ## Features
 
-### Obsidian Integration
+- One-way sync from Obsidian to Jekyll
+- Automated file watching with batched updates
+- Smart path conversion for images
+- SQLite-based file mapping
+- Template-based configuration
 
-The blog includes automatic syncing from Obsidian vault to Jekyll posts with the following features:
+## Requirements
 
-- **Automatic Post Sync**: Posts marked with `published: true` in Obsidian are automatically synced
-- **Media Handling**:
-  - Supports Obsidian image syntax (`![[image.png]]`)
-  - Automatically processes and optimizes images
-  - Handles featured images in frontmatter
-- **File Organization**:
-  - Maintains proper Jekyll post naming convention
-  - Organizes media files in assets directory
-  - Handles file conflicts with content hashing
-- **Quality Control**:
-  - Markdown linting
-  - Image optimization
-  - Proper newline handling
+- Python 3.8 or higher
+- fswatch (for file monitoring)
+- Jekyll site using Chirpy theme
 
-### Configuration
+## Quick Start
 
-The sync functionality requires the following environment variables in `.env`:
+### 1. Fork and setup
 
-```shell
-VAULT_PATH=/path/to/obsidian/vault
-VAULT_ATOMICS_PATH=atomics
-VAULT_ATTACHMENTS_PATH=attachments
-BLOG_ASSETS_PATH=assets/img/posts
+First, fork this repository to create your own copy. Then:
+
+```bash
+git clone https://github.com/your-username/obsidian-jekyll-sync.git
+cd obsidian-jekyll-sync
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-### Automatic Sync
+### 2. Configure
 
-The blog uses a cron job to automatically sync posts every 5 minutes. The sync script:
+```bash
+./scripts/setup.sh
+# Edit .env with your paths
+```
 
-1. Checks for new/updated posts in Obsidian
-2. Processes any media files
-3. Updates the Jekyll blog
-4. Commits and pushes changes
+### 3. Start sync
 
-## Acknowledgments
+```bash
+./scripts/sync_control.sh start
+```
 
-This blog is powered by [Jekyll](https://jekyllrb.com/) and uses the beautiful [Chirpy theme](https://github.com/cotes2020/jekyll-theme-chirpy/). Big thanks to both projects for making this blog possible! ❤️
+## Documentation
+
+- [Usage Guide](docs/usage.md)
+- [Implementation Details](docs/implementation.md)
 
 ## License
 
-This work is published under [MIT][mit] License.
-
-[mit]: https://github.com/cotes2020/chirpy-starter/blob/master/LICENSE
+MIT License - see [LICENSE](LICENSE) for details

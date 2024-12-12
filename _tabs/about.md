@@ -4,7 +4,7 @@ icon: fas fa-info-circle
 order: 4
 ---
 
-# About Me
+## About Me
 
 Hi, I'm Teddy! I'm an IT enthusiast from Denmark's Capital Region, passionate about AI, automation, and open-source development.
 
