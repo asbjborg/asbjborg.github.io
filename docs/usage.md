@@ -1,170 +1,196 @@
 # Usage Guide
 
-## Table of Contents
+This guide covers the setup and usage of the sync system. For technical details and implementation information, see [Implementation Details](implementation.md).
 
-1. [Installation](#installation)
-2. [Configuration](#configuration)
-3. [Basic Usage](#basic-usage)
-4. [Advanced Usage](#advanced-usage)
-5. [Troubleshooting](#troubleshooting)
+## System Requirements
 
-## Installation
+### Unix-based Systems (macOS/Linux)
+- Python 3.8 or higher
+- fswatch (`brew install fswatch` on macOS, available in most Linux package managers)
+- zsh or bash shell
 
-1. Clone the repository:
+### Windows Users
+This system is designed for Unix-based systems. Windows users have two options:
+
+1. Recommended: Use WSL2 (Windows Subsystem for Linux)
+   - Install WSL2 following [Microsoft's instructions](https://learn.microsoft.com/en-us/windows/wsl/install)
+   - Install Ubuntu or another Linux distribution
+   - Follow the Unix-based setup instructions within WSL2
+   - Mount your Obsidian vault in WSL2 if needed
+
+2. Alternative: Native Windows (Limited Support)
+   - Native Windows support is not officially supported
+   - Scripts would need manual conversion to PowerShell/batch
+   - File watching would need alternative implementation
+   - Use at your own risk
+
+## Initial Setup
+
+### 1. Python Environment
+
+First, create and activate a virtual environment:
+```bash
+# Create virtual environment
+python -m venv .venv
+
+# Activate it (macOS/Linux)
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. Configuration Setup
+
+1. Run the setup script to create your local configuration:
    ```bash
-   git clone https://github.com/asbjborg/jekyll-obsidian-sync.git
-   cd jekyll-obsidian-sync
+   ./scripts/setup.sh
    ```
+   This will:
+   - Copy `.env.example` to `.env`
+   - Create local script copies from templates
+   - Make scripts executable
 
-2. Install dependencies:
+2. Edit `.env` with your settings:
    ```bash
-   pip install -r requirements.txt
+   # Required Configuration
+   SYNC_VAULT_ROOT="/path/to/your/obsidian/vault"
+   SYNC_JEKYLL_ROOT="/path/to/your/jekyll/site"
+   SYNC_LOG_DIR="/path/to/your/log/directory"
+   
+   # Important: Set Python path to your virtual environment
+   SYNC_PYTHON_PATH="/full/path/to/your/.venv/bin/python"
    ```
 
-## Configuration
+3. Optional settings in `.env`:
+   ```bash
+   # Optional Paths
+   SYNC_VAULT_ATOMICS="atomics"        # Obsidian folder to sync
+   SYNC_JEKYLL_POSTS="_posts"          # Jekyll posts folder
+   SYNC_JEKYLL_ASSETS="assets/img/posts" # Jekyll assets folder
 
-### Environment Variables
+   # Debug and Log Modes
+   SYNC_DEBUG=false                    # Enable full debug output
+   SYNC_LOG=true                       # Enable operation logging
 
-Set the following environment variables:
-
-```bash
-# Required
-export PKM_ROOT=/path/to/obsidian/vault
-export JEKYLL_ROOT=/path/to/jekyll/site
-
-# Optional
-export SYNC_DEBUG=true        # Enable debug logging
-export SYNC_MAX_BACKUPS=5     # Number of backups to keep
-```
-
-### Obsidian Setup
-
-1. Create an `atomics` folder in your vault for blog posts
-2. Add frontmatter to posts you want to sync:
-   ```yaml
-   ---
-   title: My Blog Post
-   status: published  # or draft
-   tags: [blog, tech]
-   image: "[[path/to/header.png]]"  # Optional header image
-   ---
+   # Script Configuration
+   SYNC_INTERVAL=300                   # Sync interval in seconds
    ```
 
-### Jekyll Setup
+### 3. Verify Setup
 
-Ensure your Jekyll site has:
-1. A `_posts` directory for blog posts
-2. An `assets/img/posts` directory for images
-
-## Basic Usage
-
-### Dry Run
-
-Always start with a dry run to preview changes:
-
+Test your configuration:
 ```bash
-python scripts/sync.py --dry-run
+# Verify Python environment
+$SYNC_PYTHON_PATH --version  # Should show Python version
+
+# Test sync script
+$SYNC_PYTHON_PATH scripts/sync.py
 ```
 
-This will show what would be synced without making any changes.
+## Automated Sync
 
-### Full Sync
+The site includes an automated sync system that watches for changes in your Obsidian vault and syncs them to Jekyll.
 
-Run the sync:
+### Prerequisites
 
-```bash
-python scripts/sync.py
-```
-
-This will:
-1. Sync published Obsidian posts to Jekyll
-2. Sync Jekyll posts back to Obsidian
-3. Convert image paths and copy images
-4. Create backups before changes
-
-### Backup Only
-
-Create backups without syncing:
-
-```bash
-python scripts/backup.py
-```
-
-### Asset Normalization
-
-Normalize image filenames:
-
-```bash
-python scripts/normalize_assets.py
-```
-
-## Advanced Usage
-
-### Selective Sync
-
-Control what gets synced using frontmatter:
-
-```yaml
----
-status: published  # Sync to Jekyll
-status: draft      # Keep in Obsidian only
-status: private    # Never sync
----
-```
-
-### Image Handling
-
-Images can be referenced in two ways:
-
-1. Obsidian style (automatically converted):
-   ```markdown
-   ![[image.png]]
+1. Install fswatch (required for file watching):
+   ```bash
+   brew install fswatch
    ```
 
-2. Jekyll style (automatically converted):
-   ```markdown
-   ![alt text](/assets/img/posts/image.png)
-   ```
+### Control Commands
 
-### Tag Filtering
+The sync process can be controlled using `sync_control.sh`:
 
-System tags are filtered out during sync:
-- `atomic` - Used by Obsidian
-- Other system tags can be added in `frontmatter.py`
+```bash
+# Start the sync watch process
+./scripts/sync_control.sh start
+
+# Stop the sync watch process
+./scripts/sync_control.sh stop
+
+# Restart the sync watch process
+./scripts/sync_control.sh restart
+
+# Check sync process status
+./scripts/sync_control.sh status
+```
+
+### How It Works
+
+1. File Watching
+   - Monitors the Obsidian vault's `atomics` folder for changes
+   - Detects when markdown files are created, updated, or deleted
+   - Records all changes as they happen
+
+2. Batch Processing
+   - Changes are collected and batched together
+   - Every 5 minutes, if there are changes, they're synced in one operation
+   - You can work continuously without interruption
+
+3. Logging
+   - All operations are logged to `LOGS/watch.log`
+   - Errors are logged to `LOGS/watch.error.log`
+   - Each sync shows what files were included
+
+### Log Files
+
+The sync system maintains several log files:
+
+1. `watch.log`: Main operation log showing:
+   - Change detections
+   - Sync operations
+   - Files included in each sync
+   - Timing information
+
+2. `watch.error.log`: Error and debug information
+
+3. `.pending_changes`: Temporary file tracking changes waiting to be synced
+
+### Manual Sync
+
+If needed, you can still run a manual sync:
+
+```bash
+source .env && python scripts/sync.py
+```
+
+For debug output:
+```bash
+source .env && SYNC_DEBUG=true python scripts/sync.py
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Files Not Syncing**
-   - Check file status in frontmatter
-   - Verify file paths
-   - Enable debug logging
+1. "Already running" message
+   - Use `sync_control.sh status` to check the process
+   - Use `sync_control.sh restart` to restart if needed
 
-2. **Image Path Issues**
-   - Run normalize_assets.py
-   - Check image exists in source
-   - Verify image path format
+2. No changes being detected
+   - Check if fswatch is installed: `which fswatch`
+   - Verify the vault path in `.env`
+   - Check the watch log for errors
 
-3. **Sync Conflicts**
-   - Latest modified file wins
-   - Use --dry-run to preview
-   - Check file timestamps
+3. Changes not syncing
+   - Changes are batched every 5 minutes
+   - Check `watch.log` for pending changes
+   - Verify file permissions in both directories
 
-### Debug Mode
+### Log Analysis
 
-Enable debug logging:
-
+To monitor sync activity:
 ```bash
-export SYNC_DEBUG=true
-python scripts/sync.py
+# Watch the main log
+tail -f LOGS/watch.log
+
+# Check for errors
+tail -f LOGS/watch.error.log
+
+# See pending changes
+cat LOGS/.pending_changes
 ```
 
-### File Locations
-
-- Obsidian posts: `$PKM_ROOT/atomics/**/*.md`
-- Jekyll posts: `$JEKYLL_ROOT/_posts/*.md`
-- Images: `$JEKYLL_ROOT/assets/img/posts/*`
-- Backups:
-  - PKM: `$PKM_ROOT/../PKM_backup/`
-  - Jekyll: `$JEKYLL_ROOT/../jekyll_backup/` 
+For any other issues, check the logs in `LOGS/` directory for detailed error messages.
