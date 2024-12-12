@@ -6,10 +6,12 @@ import shutil
 import sqlite3
 from pathlib import Path
 from typing import Dict, Set
-from datetime import datetime
+import time
 import yaml
 from dotenv import load_dotenv
 import json
+import sys
+import traceback
 
 def load_env():
     """Load environment variables"""
@@ -151,6 +153,59 @@ def convert_content(content: str, frontmatter_data: Dict) -> tuple[str, Dict]:
     
     return new_content, new_frontmatter
 
+def safe_datetime_operation(func):
+    """Decorator for safe datetime operations"""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            print(f"Error in datetime operation: {e}")
+            traceback.print_exc()
+            return None
+    return wrapper
+
+def get_current_time_str():
+    """Get current time in YYYY-MM-DD format"""
+    return time.strftime('%Y-%m-%d')
+
+def seconds_since_midnight(timestamp: int) -> int:
+    """Convert Unix timestamp to seconds since midnight"""
+    try:
+        t = time.localtime(timestamp)
+        return t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec
+    except Exception as e:
+        print(f"Error converting timestamp: {e}")
+        return 0
+
+def get_date_from_path(path: Path) -> str:
+    """Extract date from Obsidian path"""
+    try:
+        # First try to get date from path
+        parts = path.parts
+        for i in range(len(parts)):
+            if parts[i] == 'atomics' and i + 3 < len(parts):
+                year = parts[i+1]
+                month = parts[i+2]
+                day = parts[i+3]
+                return f"{year}-{month}-{day}"
+    except Exception as e:
+        print(f"Error extracting date from path {path}: {e}")
+    
+    # Default to current date
+    return get_current_time_str()
+
+def safe_file_operation(func):
+    """Decorator for safe file operations"""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            print(f"Error in file operation: {e}")
+            traceback.print_exc()
+            return None
+    return wrapper
+
+@safe_file_operation
 def write_file(path: Path, content: str, frontmatter: Dict, dry_run: bool = False) -> None:
     """Write content and frontmatter to file"""
     if not dry_run:
@@ -168,38 +223,19 @@ def write_file(path: Path, content: str, frontmatter: Dict, dry_run: bool = Fals
         
         yaml.add_representer(str, str_presenter)
         
-        # Convert frontmatter to YAML
-        frontmatter_yaml = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True, width=float("inf"), sort_keys=False)
-        
-        # Write file with frontmatter
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write('---\n')
-            f.write(frontmatter_yaml)
-            f.write('---\n\n')
-            f.write(content.split('\n---\n', 1)[-1].lstrip())
-
-def get_date_from_path(path: Path) -> str:
-    """Extract date from Obsidian path"""
-    try:
-        # First try to get date from path
-        parts = path.parts
-        for i in range(len(parts)):
-            if parts[i] == 'atomics' and i + 3 < len(parts):
-                year = parts[i+1]
-                month = parts[i+2]
-                day = parts[i+3]
-                return f"{year}-{month}-{day}"
-    except:
-        pass
-    
-    # Default to current date
-    return datetime.now().strftime('%Y-%m-%d')
-
-def seconds_since_midnight(timestamp: int) -> int:
-    """Convert Unix timestamp to seconds since midnight"""
-    dt = datetime.fromtimestamp(timestamp)
-    midnight = dt.replace(hour=0, minute=0, second=0, microsecond=0)
-    return int((dt - midnight).total_seconds())
+        try:
+            # Convert frontmatter to YAML
+            frontmatter_yaml = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True, width=float("inf"), sort_keys=False)
+            
+            # Write file with frontmatter
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write('---\n')
+                f.write(frontmatter_yaml)
+                f.write('---\n\n')
+                f.write(content.split('\n---\n', 1)[-1].lstrip())
+        except Exception as e:
+            print(f"Error writing file {path}: {e}")
+            raise
 
 def update_post(db, obsidian_path: str, frontmatter: Dict, last_modified: int):
     """Update post metadata in database"""
@@ -346,7 +382,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
     """Sync files from Obsidian to Jekyll"""
     # Get log level from environment
     log_enabled = os.getenv('SYNC_LOG', 'false').lower() == 'true'
-    print(f"=== Sync Started at {datetime.now().strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
+    print(f"=== Sync Started at {time.strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
     
     if debug:
         print(f"Debug mode: {debug}")
@@ -538,7 +574,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
                 img_path.unlink()
     
     db.close()
-    print(f"=== Sync Completed at {datetime.now().strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
+    print(f"=== Sync Completed at {time.strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
 
 def main():
     """Main entry point"""
@@ -551,7 +587,12 @@ def main():
     # Get debug flag from environment or command line
     debug = os.getenv('SYNC_DEBUG', 'false').lower() == 'true' or args.debug
     
-    sync_files(dry_run=args.dry_run, debug=debug)
+    try:
+        sync_files(dry_run=args.dry_run, debug=debug)
+    except Exception as e:
+        print(f"Fatal error in sync script: {e}")
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main() 
