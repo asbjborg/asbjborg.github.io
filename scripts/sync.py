@@ -3,9 +3,8 @@
 import os
 import re
 import shutil
-import sqlite3
 from pathlib import Path
-from typing import Dict, Set
+from typing import Dict, Set, List, Optional
 import time
 import yaml
 from dotenv import load_dotenv
@@ -29,32 +28,114 @@ def load_env():
     
     return Path(vault_root), Path(jekyll_root)
 
-def init_db():
-    """Initialize SQLite database"""
-    db = sqlite3.connect('sync.db')
-    c = db.cursor()
+class SyncDB:
+    """JSON-based storage for sync state"""
+    def __init__(self, root_dir: Path):
+        self.posts_file = root_dir / 'sync_posts.json'
+        self.assets_file = root_dir / 'sync_assets.json'
+        self._posts = self._load_json(self.posts_file)
+        self._assets = self._load_json(self.assets_file)
     
-    # Create posts table with specific columns for Jekyll properties
-    c.execute('''CREATE TABLE IF NOT EXISTS posts
-                 (obsidian_path TEXT PRIMARY KEY,
-                  jekyll_path TEXT,
-                  title TEXT,
-                  tags TEXT,  -- JSON array
-                  time INTEGER,  -- Seconds since midnight
-                  featured_image TEXT,  -- References assets.obsidian_path
-                  status TEXT,
-                  last_modified INTEGER)''')
+    def _load_json(self, path: Path) -> dict:
+        """Load JSON file or return empty dict"""
+        try:
+            if path.exists():
+                with open(path, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            logging.error(f"Error loading {path}: {e}")
+        return {}
     
-    # Create assets table
-    c.execute('''CREATE TABLE IF NOT EXISTS assets
-                 (obsidian_path TEXT PRIMARY KEY,
-                  jekyll_path TEXT,
-                  post_path TEXT,  -- References posts.obsidian_path
-                  last_modified INTEGER,
-                  FOREIGN KEY(post_path) REFERENCES posts(obsidian_path))''')
+    def _save_json(self, path: Path, data: dict):
+        """Save data to JSON file"""
+        try:
+            with open(path, 'w') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            logging.error(f"Error saving {path}: {e}")
     
-    db.commit()
-    return db
+    def update_post(self, obsidian_path: str, frontmatter: Dict, last_modified: int):
+        """Update post metadata"""
+        # Get Jekyll path
+        date_str = get_date_from_path(Path(obsidian_path))
+        jekyll_name = f"{date_str}-{normalize_filename(Path(obsidian_path).stem)}.md"
+        jekyll_path = f"_posts/{jekyll_name}"
+        
+        # Get featured image path if it exists
+        featured_image = None
+        if frontmatter.get('image'):
+            img_ref = frontmatter['image'].strip('"\' []')
+            if img_ref.startswith('atomics/'):
+                featured_image = img_ref
+        
+        # Calculate time in seconds since midnight
+        time_seconds = seconds_since_midnight(last_modified)
+        
+        # Convert tags to list, filtering out system tags
+        tags = [tag for tag in frontmatter.get('tags', []) if tag not in ['atomic', 'blog']]
+        
+        # Store post data
+        self._posts[obsidian_path] = {
+            'jekyll_path': jekyll_path,
+            'title': frontmatter.get('title', ''),
+            'tags': tags,
+            'time': time_seconds,
+            'featured_image': featured_image,
+            'status': frontmatter.get('status', ''),
+            'last_modified': last_modified
+        }
+        
+        self._save_json(self.posts_file, self._posts)
+    
+    def update_asset(self, obsidian_path: str, jekyll_path: str, post_path: str, last_modified: int):
+        """Update asset metadata"""
+        self._assets[obsidian_path] = {
+            'jekyll_path': jekyll_path,
+            'post_path': post_path,
+            'last_modified': last_modified
+        }
+        self._save_json(self.assets_file, self._assets)
+    
+    def get_published_posts(self) -> List[tuple]:
+        """Get all published posts"""
+        result = []
+        for obsidian_path, data in self._posts.items():
+            if data.get('status') == 'published':
+                result.append((
+                    obsidian_path,
+                    data['jekyll_path'],
+                    data['title'],
+                    json.dumps(data['tags']),
+                    data['time'],
+                    data['featured_image'],
+                    data['last_modified']
+                ))
+        return result
+    
+    def get_post_assets(self, post_path: Optional[str] = None) -> List[tuple]:
+        """Get assets for a post or all assets if post_path is None"""
+        result = []
+        for obsidian_path, data in self._assets.items():
+            if post_path is None or data['post_path'] == post_path:
+                result.append((
+                    obsidian_path,
+                    data['jekyll_path'],
+                    data['last_modified']
+                ))
+        return result
+    
+    def cleanup_assets(self):
+        """Remove assets that aren't referenced by any posts"""
+        valid_posts = {k for k, v in self._posts.items() if v['status'] in ['published', 'draft']}
+        valid_assets = {}
+        
+        for asset_path, data in self._assets.items():
+            if data['post_path'] in valid_posts:
+                valid_assets[asset_path] = data
+        
+        if valid_assets != self._assets:
+            self._assets = valid_assets
+            self._save_json(self.assets_file, self._assets)
 
 def normalize_filename(filename: str) -> str:
     """Normalize filename for Jekyll compatibility"""
@@ -154,8 +235,8 @@ def convert_content(content: str, frontmatter_data: Dict) -> tuple[str, Dict]:
     
     return new_content, new_frontmatter
 
-def safe_datetime_operation(func):
-    """Decorator for safe datetime operations"""
+def safe_time_operation(func):
+    """Decorator for safe time operations"""
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -164,12 +245,17 @@ def safe_datetime_operation(func):
             return None
     return wrapper
 
-@safe_datetime_operation
+@safe_time_operation
 def get_timestamp():
     """Get current time in YYYY-MM-DD format"""
     return time.strftime("%Y-%m-%d")
 
-@safe_datetime_operation
+@safe_time_operation
+def get_full_timestamp():
+    """Get current time in YYYY-MM-DD HH:MM:SS format"""
+    return time.strftime("%Y-%m-%d %H:%M:%S")
+
+@safe_time_operation
 def seconds_since_midnight(timestamp: int) -> int:
     """Convert Unix timestamp to seconds since midnight"""
     try:
@@ -179,7 +265,7 @@ def seconds_since_midnight(timestamp: int) -> int:
         logging.error(f"Error converting timestamp: {e}")
         return 0
 
-@safe_datetime_operation
+@safe_time_operation
 def get_date_from_path(path: Path) -> str:
     """Extract date from Obsidian path"""
     try:
@@ -256,78 +342,15 @@ def write_file(path: Path, content: str, frontmatter: Dict, dry_run: bool = Fals
             print(f"Error writing file {path}: {e}")
             raise
 
-def update_post(db, obsidian_path: str, frontmatter: Dict, last_modified: int):
-    """Update post metadata in database"""
-    c = db.cursor()
-    
-    # Get Jekyll path (create if doesn't exist)
-    date_str = get_date_from_path(Path(obsidian_path))
-    jekyll_name = f"{date_str}-{normalize_filename(Path(obsidian_path).stem)}.md"
-    jekyll_path = f"_posts/{jekyll_name}"
-    
-    # Get featured image path if it exists
-    featured_image = None
-    if frontmatter.get('image'):
-        img_ref = frontmatter['image'].strip('"\' []')
-        if img_ref.startswith('atomics/'):
-            featured_image = img_ref
-    
-    # Calculate time in seconds since midnight
-    time_seconds = seconds_since_midnight(last_modified)
-    
-    # Convert tags to JSON string, filtering out system tags
-    tags = [tag for tag in frontmatter.get('tags', []) if tag not in ['atomic', 'blog']]
-    tags_json = json.dumps(tags)
-    
-    c.execute('''INSERT OR REPLACE INTO posts 
-                 (obsidian_path, jekyll_path, title, tags, time, featured_image, status, last_modified)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-              (obsidian_path, jekyll_path, frontmatter.get('title', ''),
-               tags_json, time_seconds, featured_image, frontmatter.get('status', ''), last_modified))
-    
-    db.commit()
-
-def update_asset(db, obsidian_path: str, jekyll_path: str, post_path: str, last_modified: int):
-    """Update asset metadata in database"""
-    c = db.cursor()
-    
-    c.execute('''INSERT OR REPLACE INTO assets
-                 (obsidian_path, jekyll_path, post_path, last_modified)
-                 VALUES (?, ?, ?, ?)''',
-              (obsidian_path, jekyll_path, post_path, last_modified))
-    
-    db.commit()
-
-def get_published_posts(db):
-    """Get all published posts from database"""
-    c = db.cursor()
-    c.execute('''SELECT obsidian_path, jekyll_path, title, tags, time, featured_image, last_modified
-                 FROM posts
-                 WHERE status = 'published' ''')
-    return c.fetchall()
-
-def get_post_assets(db, post_path: str):
-    """Get all assets for a post. If post_path is None, get all assets."""
-    c = db.cursor()
-    if post_path is None:
-        c.execute('''SELECT obsidian_path, jekyll_path, last_modified
-                    FROM assets''')
-    else:
-        c.execute('''SELECT obsidian_path, jekyll_path, last_modified
-                    FROM assets
-                    WHERE post_path = ?''', (post_path,))
-    return c.fetchall()
-
-def convert_image_paths(db, content: str, post_path: str) -> str:
+def convert_image_paths(db: SyncDB, content: str, post_path: str) -> str:
     """Convert Obsidian image paths to Jekyll paths using the database"""
-    c = db.cursor()
     
     # Function to get Jekyll path for an asset
     def get_jekyll_path(obsidian_path: str) -> str:
-        c.execute('SELECT jekyll_path FROM assets WHERE obsidian_path = ? AND post_path = ?',
-                 (obsidian_path, post_path))
-        result = c.fetchone()
-        return f"/{result[0]}" if result else obsidian_path  # Prepend / for absolute path in Jekyll
+        for asset in db.get_post_assets(post_path):
+            if asset[0] == obsidian_path:  # asset[0] is obsidian_path
+                return f"/{asset[1]}"  # asset[1] is jekyll_path
+        return obsidian_path
     
     # Convert inline images: ![[path]] -> ![alt](/jekyll/path)
     def replace_inline(match):
@@ -341,40 +364,6 @@ def convert_image_paths(db, content: str, post_path: str) -> str:
     content = re.sub(r'!\[\[(.*?)\]\]', replace_inline, content)
     
     return content
-
-def cleanup_orphaned_assets(db, jekyll_root: Path, dry_run: bool = False, debug: bool = False):
-    """Remove assets in Jekyll that are no longer referenced by any posts"""
-    c = db.cursor()
-    
-    # Get all assets currently referenced by posts
-    c.execute('''SELECT DISTINCT a.jekyll_path 
-                 FROM assets a 
-                 JOIN posts p ON a.post_path = p.obsidian_path
-                 WHERE p.status IN ('published', 'draft')''')
-    valid_assets = {row[0] for row in c.fetchall()}
-    
-    # Get all assets in Jekyll
-    assets_dir = jekyll_root / 'assets/img/posts'
-    if not assets_dir.exists():
-        return
-    
-    # Check each file in the assets directory
-    for asset_file in assets_dir.glob('*'):
-        jekyll_path = f"assets/img/posts/{asset_file.name}"
-        if jekyll_path not in valid_assets:
-            if debug:
-                print(f"Removing orphaned asset: {asset_file.name}")
-            if not dry_run:
-                asset_file.unlink()
-    
-    # Clean up database entries for removed assets
-    if not dry_run:
-        c.execute('''DELETE FROM assets 
-                     WHERE obsidian_path NOT IN 
-                     (SELECT featured_image FROM posts WHERE featured_image IS NOT NULL)
-                     AND post_path NOT IN 
-                     (SELECT obsidian_path FROM posts WHERE status IN ('published', 'draft'))''')
-        db.commit()
 
 def create_jekyll_frontmatter(post_data, assets_db) -> Dict:
     """Create Jekyll frontmatter with only allowed properties"""
@@ -425,7 +414,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
         dir.mkdir(parents=True, exist_ok=True)
     
     # Initialize database
-    db = init_db()
+    db = SyncDB(jekyll_root)
     
     # Track valid posts and assets
     valid_posts = set()
@@ -461,7 +450,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
                 
                 # Update post in database
                 last_modified = int(md_file.stat().st_mtime)
-                update_post(db, rel_path, frontmatter_data, last_modified)
+                db.update_post(rel_path, frontmatter_data, last_modified)
                 
                 # Track assets if published/draft
                 if status.lower() in ['published', 'draft']:
@@ -472,7 +461,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
                             img_path = atomics_dir / '/'.join(img_ref.split('/')[1:])
                             if img_path.exists() and img_path.suffix.lower() in ['.jpg', '.jpeg', '.png', '.gif']:
                                 jekyll_name = normalize_filename(img_path.name)
-                                update_asset(db, str(img_path.relative_to(vault_root)),
+                                db.update_asset(str(img_path.relative_to(vault_root)),
                                           f"assets/img/posts/{jekyll_name}",
                                           rel_path, int(img_path.stat().st_mtime))
                                 valid_assets.add(img_path)
@@ -484,7 +473,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
                             img_path = atomics_dir / '/'.join(img_ref.split('/')[1:])
                             if img_path.exists() and img_path.suffix.lower() in ['.jpg', '.jpeg', '.png', '.gif']:
                                 jekyll_name = normalize_filename(img_path.name)
-                                update_asset(db, str(img_path.relative_to(vault_root)),
+                                db.update_asset(str(img_path.relative_to(vault_root)),
                                           f"assets/img/posts/{jekyll_name}",
                                           rel_path, int(img_path.stat().st_mtime))
                                 valid_assets.add(img_path)
@@ -494,7 +483,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
     # Second pass: Sync published posts to Jekyll
     if log_enabled:
         print("Syncing published posts...")
-    for post in get_published_posts(db):
+    for post in db.get_published_posts():
         obsidian_path, jekyll_path, title, tags_json, time, featured_image, last_modified = post
         
         # Get full paths
@@ -540,7 +529,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
     if log_enabled:
         print("Syncing assets...")
     for post_path in valid_posts:
-        for asset in get_post_assets(db, post_path):
+        for asset in db.get_post_assets(post_path):
             obsidian_path, jekyll_path, last_modified = asset
             
             # Get full paths
@@ -563,21 +552,21 @@ def sync_files(dry_run: bool = False, debug: bool = False):
     # Final pass: Cleanup orphaned assets
     if log_enabled:
         print("Cleaning up orphaned assets...")
-    cleanup_orphaned_assets(db, jekyll_root, dry_run, debug)
+    db.cleanup_assets()
     
     # Clean up invalid Jekyll posts
     if log_enabled:
         print("Cleaning up Jekyll posts...")
     if debug:
         print("Valid posts from database:")
-        for post in get_published_posts(db):
+        for post in db.get_published_posts():
             print(f"  - {post[1]}")  # jekyll_path
     
     for md_file in posts_dir.glob('*.md'):
         jekyll_path = str(md_file.relative_to(jekyll_root))
         if debug:
             print(f"Checking Jekyll post: {jekyll_path}")
-        if jekyll_path not in [post[1] for post in get_published_posts(db)]:
+        if jekyll_path not in [post[1] for post in db.get_published_posts()]:
             print(f"[SYNC_CHANGE] Post deleted: {md_file.name}")
             if not dry_run:
                 md_file.unlink()
@@ -587,12 +576,11 @@ def sync_files(dry_run: bool = False, debug: bool = False):
         print("Cleaning up unused assets...")
     for img_path in assets_dir.glob('*.*'):
         jekyll_path = f"assets/img/posts/{img_path.name}"
-        if jekyll_path not in [asset[1] for asset in get_post_assets(db, None)]:
+        if jekyll_path not in [asset[1] for asset in db.get_post_assets(None)]:
             print(f"[SYNC_CHANGE] Asset deleted: {img_path.name}")
             if not dry_run:
                 img_path.unlink()
     
-    db.close()
     print(f"=== Sync Completed at {time.strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
 
 def main():
