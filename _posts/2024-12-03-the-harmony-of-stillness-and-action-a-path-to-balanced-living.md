@@ -9,7 +9,8 @@ tags:
 - productivity
 - reflection
 - development
-time: 59043
+- AI
+time: 62105
 image: /assets/img/posts/pasted-image-20241203214844.png
 ---
 
