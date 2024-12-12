@@ -1,27 +1,15 @@
-_site
-.sass-cache
-.jekyll-cache
+# Jekyll
+_site/
+.sass-cache/
+.jekyll-cache/
 .jekyll-metadata
-vendor
-.venv/
-__pycache__/
-*.pyc
-.env
-
-# macOS system files
-.DS_Store
-~/
-com.asbjborg.obsidian-to-blog-sync.plist
-
-# Cursor workarounds for github
-commit_message.txt
+vendor/
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -36,14 +24,12 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
-.coverage
-htmlcov/
 
-# Jekyll
-_site/
-.sass-cache/
-.jekyll-cache/
-.jekyll-metadata
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
 
 # IDE
 .idea/
@@ -57,29 +43,28 @@ _site/
 .LSOverride
 Thumbs.db
 
-# Test files and directories
-PKM/
-PKM_backup/
-_posts_backup/
-assets/img/posts_backup/
-test_post.md
-test_sync/
-test_backup/
+# Generated Scripts
+scripts/watch_sync.sh
+scripts/sync_control.sh
+scripts/sync_wrapper.sh
 
-# Generated test files
-_posts/2024-12-04-jekyll-only-post.md
-_posts/2024-12-04-testing-jekyll-sync-engine.md
-assets/img/posts/first-content-image.png
-assets/img/posts/second-content-image.png
-assets/img/posts/test-image1.png
-assets/img/posts/test-image2.png
+# Runtime Files
+.watch.pid
+.last_sync
+.pending_changes
+sync.db
+*.db
+*.db-journal
+
+# Logs
+LOGS/
+*.log
 
 # Environment
 .env
-.venv
-env/
-venv/
-ENV/
 
-# One-time cleanup scripts
-scripts/fix_times.py
+# Cursor workarounds
+commit_message.txt
+
+# Legacy files
+*.plist
