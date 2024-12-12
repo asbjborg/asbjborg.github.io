@@ -5,7 +5,7 @@ import re
 import shutil
 from pathlib import Path
 from typing import Dict, Set, List, Optional
-import time
+import time as time_module
 import yaml
 from dotenv import load_dotenv
 import json
@@ -248,18 +248,18 @@ def safe_time_operation(func):
 @safe_time_operation
 def get_timestamp():
     """Get current time in YYYY-MM-DD format"""
-    return time.strftime("%Y-%m-%d")
+    return time_module.strftime("%Y-%m-%d")
 
 @safe_time_operation
 def get_full_timestamp():
     """Get current time in YYYY-MM-DD HH:MM:SS format"""
-    return time.strftime("%Y-%m-%d %H:%M:%S")
+    return time_module.strftime("%Y-%m-%d %H:%M:%S")
 
 @safe_time_operation
 def seconds_since_midnight(timestamp: int) -> int:
     """Convert Unix timestamp to seconds since midnight"""
     try:
-        t = time.localtime(timestamp)
+        t = time_module.localtime(timestamp)
         return t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec
     except Exception as e:
         logging.error(f"Error converting timestamp: {e}")
@@ -287,7 +287,7 @@ def setup_logging():
     log_dir = os.getenv('SYNC_LOG_DIR', 'LOGS')
     os.makedirs(log_dir, exist_ok=True)
     
-    log_file = os.path.join(log_dir, f"sync_{time.strftime('%Y%m%d_%H%M%S')}.log")
+    log_file = os.path.join(log_dir, f"sync_{time_module.strftime('%Y%m%d_%H%M%S')}.log")
     
     logging.basicConfig(
         level=logging.DEBUG if os.getenv('SYNC_DEBUG') else logging.INFO,
@@ -390,7 +390,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
     """Sync files from Obsidian to Jekyll"""
     # Get log level from environment
     log_enabled = os.getenv('SYNC_LOG', 'false').lower() == 'true'
-    print(f"=== Sync Started at {time.strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
+    print(f"=== Sync Started at {time_module.strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
     
     if debug:
         print(f"Debug mode: {debug}")
@@ -572,8 +572,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
                 md_file.unlink()
     
     # Clean up unused assets
-    if log_enabled:
-        print("Cleaning up unused assets...")
+    print("Cleaning up unused assets...")
     for img_path in assets_dir.glob('*.*'):
         jekyll_path = f"assets/img/posts/{img_path.name}"
         if jekyll_path not in [asset[1] for asset in db.get_post_assets(None)]:
@@ -581,7 +580,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
             if not dry_run:
                 img_path.unlink()
     
-    print(f"=== Sync Completed at {time.strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
+    print(f"=== Sync Completed at {time_module.strftime('%a %b %d %H:%M:%S %Z %Y')} ===")
 
 def main():
     """Main entry point"""
