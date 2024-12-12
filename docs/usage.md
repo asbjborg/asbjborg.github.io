@@ -5,11 +5,13 @@ This guide covers the setup and usage of the sync system. For technical details 
 ## System Requirements
 
 ### Unix-based Systems (macOS/Linux)
+
 - Python 3.8 or higher
 - fswatch (`brew install fswatch` on macOS, available in most Linux package managers)
 - zsh or bash shell
 
 ### Windows Users
+
 This system is designed for Unix-based systems. Windows users have two options:
 
 1. Recommended: Use WSL2 (Windows Subsystem for Linux)
@@ -29,6 +31,7 @@ This system is designed for Unix-based systems. Windows users have two options:
 ### 1. Python Environment
 
 First, create and activate a virtual environment:
+
 ```bash
 # Create virtual environment
 python -m venv .venv
@@ -43,15 +46,18 @@ pip install -r requirements.txt
 ### 2. Configuration Setup
 
 1. Run the setup script to create your local configuration:
+
    ```bash
    ./scripts/setup.sh
    ```
+
    This will:
    - Copy `.env.example` to `.env`
    - Create local script copies from templates
    - Make scripts executable
 
 2. Edit `.env` with your settings:
+
    ```bash
    # Required Configuration
    SYNC_VAULT_ROOT="/path/to/your/obsidian/vault"
@@ -63,6 +69,7 @@ pip install -r requirements.txt
    ```
 
 3. Optional settings in `.env`:
+
    ```bash
    # Optional Paths
    SYNC_VAULT_ATOMICS="atomics"        # Obsidian folder to sync
@@ -80,6 +87,7 @@ pip install -r requirements.txt
 ### 3. Verify Setup
 
 Test your configuration:
+
 ```bash
 # Verify Python environment
 $SYNC_PYTHON_PATH --version  # Should show Python version
@@ -95,6 +103,7 @@ The site includes an automated sync system that watches for changes in your Obsi
 ### Prerequisites
 
 1. Install fswatch (required for file watching):
+
    ```bash
    brew install fswatch
    ```
@@ -157,6 +166,7 @@ source .env && python scripts/sync.py
 ```
 
 For debug output:
+
 ```bash
 source .env && SYNC_DEBUG=true python scripts/sync.py
 ```
@@ -182,6 +192,7 @@ source .env && SYNC_DEBUG=true python scripts/sync.py
 ### Log Analysis
 
 To monitor sync activity:
+
 ```bash
 # Watch the main log
 tail -f LOGS/watch.log

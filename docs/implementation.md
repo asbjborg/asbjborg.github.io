@@ -5,9 +5,11 @@ This document covers the technical implementation details of the sync system.
 ## Platform Support
 
 ### Unix-based Systems
+
 The system is primarily designed for and tested on Unix-based systems (macOS and Linux). All scripts and tools are developed with Unix compatibility in mind.
 
 ### Windows Compatibility
+
 While the core Python code is platform-agnostic, the shell scripts and file watching mechanism are Unix-specific. Windows users should:
 
 1. Use WSL2 (Recommended)
@@ -24,7 +26,7 @@ While the core Python code is platform-agnostic, the shell scripts and file watc
 
 ## Project Structure
 
-```
+```text
 .
 ├── docs/                  # Documentation
 ├── scripts/
@@ -79,6 +81,7 @@ The system uses environment variables for configuration, stored in `.env`. The s
    - Each installation has its own local configuration
 
 3. Required Variables
+
    ```bash
    SYNC_VAULT_ROOT      # Obsidian vault location
    SYNC_JEKYLL_ROOT     # Jekyll site location
@@ -86,6 +89,7 @@ The system uses environment variables for configuration, stored in `.env`. The s
    ```
 
 4. Optional Variables
+
    ```bash
    SYNC_VAULT_ATOMICS   # Obsidian sync folder
    SYNC_JEKYLL_POSTS    # Jekyll posts folder
@@ -182,6 +186,7 @@ The following files are generated locally and git-ignored:
 ### Testing
 
 1. Setup Testing
+
    ```bash
    # Clean start
    rm -rf .env scripts/watch_sync.sh scripts/sync_control.sh scripts/sync_wrapper.sh .venv
@@ -192,12 +197,14 @@ The following files are generated locally and git-ignored:
    ```
 
 2. Configuration Test
+
    ```bash
    # Verify environment
    source .env && $SYNC_PYTHON_PATH scripts/sync.py
    ```
 
 3. Watch Process Test
+
    ```bash
    ./scripts/sync_control.sh start
    ./scripts/sync_control.sh status
