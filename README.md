@@ -1,53 +1,50 @@
 # Obsidian to Jekyll Sync
 
-A simple and robust sync engine to publish Obsidian notes to a Jekyll blog.
+A tool to sync Obsidian notes to a Jekyll blog.
 
 ## Features
 
-- One-way sync from Obsidian to Jekyll
-- Automated file watching with batched updates
-- Smart path conversion for images
-- SQLite-based file mapping
-- Template-based configuration
+- Syncs Markdown files from Obsidian to Jekyll
+- Handles image attachments
+- Preserves frontmatter
+- Runs automatically every 5 minutes via cron
 
-## Requirements
+## Setup
 
-- Python 3.8 or higher
-- fswatch (for file monitoring)
-- Jekyll site using Chirpy theme
+1. Clone this repository
+2. Run setup script:
 
-## Quick Start
+   ```bash
+   ./scripts/setup.sh
+   ```
 
-### 1. Fork and setup
+3. Configure `.env` with your paths
+4. The sync will run automatically every 5 minutes
 
-First, fork this repository to create your own copy. Then:
+## Manual Sync
 
-```bash
-git clone https://github.com/your-username/obsidian-jekyll-sync.git
-cd obsidian-jekyll-sync
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 2. Configure
+If you need to run a sync manually:
 
 ```bash
-./scripts/setup.sh
-# Edit .env with your paths
+./scripts/sync_wrapper.sh
 ```
 
-### 3. Start sync
+## Logs
 
-```bash
-./scripts/sync_control.sh start
-```
+Logs are stored in the `LOGS` directory:
 
-## Documentation
+- `sync_YYYYMMDD_HHMMSS.log` - Individual sync logs
+- `watch.log` - General sync log
+- `watch.error.log` - Error log
 
-- [Usage Guide](docs/usage.md)
-- [Implementation Details](docs/implementation.md)
+## Configuration
+
+Edit `.env` to configure:
+
+- Paths to Obsidian vault and Jekyll site
+- Debug and logging options
+- Sync interval
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details
+MIT

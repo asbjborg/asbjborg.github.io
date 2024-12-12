@@ -1,8 +1,13 @@
 ---
 title: Sinking Mankind - New track published on Soundcloud
 tags:
-- music-production
-time: 41623
+- digital-mythology
+- modern-sirens
+- self-reflection
+- social-media
+- music
+- digital-culture
+time: 56917
 ---
 
 *Exploring modern parallels to ancient myths.*

@@ -43,10 +43,11 @@ ENV/
 .LSOverride
 Thumbs.db
 
-# Generated Scripts
-scripts/watch_sync.sh
-scripts/sync_control.sh
+# Generated files
+.env
 scripts/sync_wrapper.sh
+.venv/
+LOGS/
 
 # Runtime Files
 .watch.pid

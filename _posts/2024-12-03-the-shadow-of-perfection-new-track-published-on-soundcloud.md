@@ -4,11 +4,10 @@ tags:
 - music
 - digital-mythology
 - modern-narcissus
-- ai-music
 - social-media
 - digital-culture
 - self-reflection
-time: 55888
+time: 56912
 image: /assets/img/posts/narcissus-featured.png
 ---
 

@@ -83,6 +83,17 @@ This system is designed for Unix-based systems. Windows users have two options:
    SYNC_PYTHON_PATH="/path/to/python"  # Custom Python interpreter
    ```
 
+## Running
+
+The sync runs automatically every 5 minutes via cron. You can:
+
+1. Wait for the automatic sync
+2. Run a manual sync:
+
+   ```bash
+   ./scripts/sync_wrapper.sh
+   ```
+
 ## Automated Sync
 
 The site includes an automated sync system that watches for changes in your Obsidian vault and syncs them to Jekyll.
@@ -151,6 +162,10 @@ source .env && SYNC_DEBUG=true python scripts/sync.py
 ```
 
 ## Troubleshooting
+
+1. Check the logs in `LOGS/`
+2. Enable debug mode in `.env`
+3. Run a manual sync to see immediate output
 
 ### Common Issues
 

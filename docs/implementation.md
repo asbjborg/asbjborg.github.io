@@ -10,7 +10,7 @@ The system is primarily designed for and tested on Unix-based systems (macOS and
 
 ### Windows Compatibility
 
-While the core Python code is platform-agnostic, the shell scripts and file watching mechanism are Unix-specific. Windows users should:
+While the core Python code is platform-agnostic, the shell scripts are Unix-specific. Windows users should:
 
 1. Use WSL2 (Recommended)
    - Provides full Unix compatibility
@@ -20,7 +20,6 @@ While the core Python code is platform-agnostic, the shell scripts and file watc
 2. Native Windows (Unsupported)
    - Would require:
      - PowerShell/batch script equivalents
-     - Alternative to fswatch (e.g., watchdog)
      - Path handling modifications
    - Not officially supported or tested
 
@@ -30,13 +29,9 @@ While the core Python code is platform-agnostic, the shell scripts and file watc
 .
 ├── docs/                  # Documentation
 ├── scripts/
-│   ├── core/             # Core functionality
-│   ├── sync/             # Sync implementation
-│   ├── utils/            # Utility functions
-│   ├── setup.sh          # Initial setup script
-│   ├── *.sh.template     # Script templates
-│   └── sync.py          # Main sync script
-├── tests/                # Test files
+│   ├── sync.py           # Main sync script
+│   ├── sync_wrapper.sh   # Wrapper script
+│   └── setup.sh          # Initial setup script
 ├── .env.example          # Environment template
 ├── requirements.txt      # Python dependencies
 └── .venv/               # Virtual environment (generated)
@@ -72,7 +67,6 @@ The system uses environment variables for configuration, stored in `.env`. The s
 
 1. Templates
    - `.env.example`: Template for environment variables
-   - `scripts/*.sh.template`: Template shell scripts
    - All personal paths and settings stay in `.env`
 
 2. Setup Process
@@ -96,41 +90,11 @@ The system uses environment variables for configuration, stored in `.env`. The s
    SYNC_JEKYLL_ASSETS   # Jekyll assets folder
    SYNC_DEBUG           # Debug output toggle
    SYNC_LOG             # Operation logging toggle
-   SYNC_INTERVAL        # Sync batch interval
+   SYNC_INTERVAL        # Sync interval (5 minutes)
    SYNC_PYTHON_PATH     # Custom Python interpreter
    ```
 
 ## Sync Process
-
-### Watch Script (`watch_sync.sh`)
-
-1. Environment Loading
-   - Sources `.env` for configuration
-   - Sets default values for optional variables
-   - Creates required directories
-
-2. Process Management
-   - Maintains PID file for single instance
-   - Handles cleanup on exit
-   - Manages sync interval timing
-
-3. Change Detection
-   - Uses fswatch to monitor Obsidian
-   - Records changes to pending file
-   - Batches changes for efficiency
-
-### Control Script (`sync_control.sh`)
-
-1. Commands
-   - start: Launches watch process
-   - stop: Terminates watch process
-   - restart: Full process restart
-   - status: Shows current state
-
-2. Process Handling
-   - PID file management
-   - Clean process termination
-   - Status verification
 
 ### Wrapper Script (`sync_wrapper.sh`)
 
@@ -156,12 +120,12 @@ The following files are generated locally and git-ignored:
    - `.venv/`: Virtual environment
 
 2. Runtime Files
-   - `.watch.pid`: Process ID
    - `.last_sync`: Timestamp
-   - `.pending_changes`: Change queue
+   - `sync.db`: SQLite database
 
 3. Logs
-   - `watch.log`: Main log
+   - `sync_*.log`: Individual sync logs
+   - `watch.log`: General log
    - `watch.error.log`: Error log
 
 ## Development Guidelines
@@ -170,15 +134,9 @@ The following files are generated locally and git-ignored:
 
 1. Template Updates
    - Modify `.env.example` for new variables
-   - Update script templates if needed
    - Document in implementation.md
 
-2. Script Changes
-   - Keep templates and scripts in sync
-   - Test with setup.sh process
-   - Verify git-ignore patterns
-
-3. Python Changes
+2. Python Changes
    - Test in clean virtual environment
    - Update requirements.txt if needed
    - Document new dependencies
@@ -189,7 +147,7 @@ The following files are generated locally and git-ignored:
 
    ```bash
    # Clean start
-   rm -rf .env scripts/watch_sync.sh scripts/sync_control.sh scripts/sync_wrapper.sh .venv
+   rm -rf .env scripts/sync_wrapper.sh .venv
    python -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
@@ -203,34 +161,16 @@ The following files are generated locally and git-ignored:
    source .env && $SYNC_PYTHON_PATH scripts/sync.py
    ```
 
-3. Watch Process Test
-
-   ```bash
-   ./scripts/sync_control.sh start
-   ./scripts/sync_control.sh status
-   ./scripts/sync_control.sh stop
-   ```
-
 ## Troubleshooting
 
 ### Common Development Issues
 
-1. Template Sync
-   - Keep templates updated with changes
-   - Test setup.sh regularly
-   - Verify git-ignore patterns
-
-2. Process Management
-   - Check PID file handling
-   - Verify cleanup procedures
-   - Test process termination
-
-3. Configuration
+1. Configuration
    - Test with minimal .env
    - Verify default values
    - Check path handling
 
-4. Python Environment
+2. Python Environment
    - Verify virtual environment activation
    - Check dependency installation
    - Confirm Python path in .env

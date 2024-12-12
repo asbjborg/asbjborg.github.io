@@ -15,6 +15,15 @@ cp scripts/sync_wrapper.sh.template scripts/sync_wrapper.sh
 # Make scripts executable
 chmod +x scripts/watch_sync.sh scripts/sync_control.sh scripts/sync_wrapper.sh
 
+# Copy script templates
+cp scripts/sync_wrapper.sh.template scripts/sync_wrapper.sh
+
+# Set permissions
+chmod +x scripts/sync_wrapper.sh
+
+# Install cron job
+(crontab -l 2>/dev/null | grep -v 'sync_wrapper.sh'; echo "*/5 * * * * cd $PWD && ./scripts/sync_wrapper.sh") | crontab -
+
 echo "Template files have been copied. Please edit .env with your settings."
 echo "Required settings:"
 echo "  - SYNC_VAULT_ROOT: Path to your Obsidian vault"
