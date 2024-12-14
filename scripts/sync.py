@@ -495,58 +495,75 @@ def sync_files(dry_run: bool = False, debug: bool = False):
 
     # Track valid posts for cleanup
     valid_posts = set()
+    valid_assets = set()
 
     # Scan Obsidian files
     print("Scanning Obsidian files...")
     for root, _, files in os.walk(atomics_dir):
-        print(f"Looking for .md files in: {root}")
+        print(f"Looking for .md files and images in: {root}")
         for file in files:
-            if not file.endswith('.md'):
-                continue
+            file_path = os.path.join(root, file)
+            rel_path = os.path.relpath(file_path, vault_root)
+            
+            # Handle markdown files
+            if file.endswith('.md'):
+                print(f"Found file: {rel_path}")
 
-            obsidian_path = os.path.join(root, file)
-            print(f"Found file: {os.path.relpath(obsidian_path, vault_root)}")
+                try:
+                    # Read file content
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
 
-            try:
-                # Read file content
-                with open(obsidian_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
+                    # Extract frontmatter
+                    frontmatter = extract_frontmatter(content)
+                    if not frontmatter.get('status'):
+                        print(f"Skipping {file} - no status")
+                        continue
 
-                # Extract frontmatter
-                frontmatter = extract_frontmatter(content)
-                if not frontmatter.get('status'):
-                    print(f"Skipping {file} - no status")
-                    continue
+                    # Calculate content hash
+                    content_hash = hashlib.md5(content.encode()).hexdigest()
 
-                # Calculate content hash
-                content_hash = hashlib.md5(content.encode()).hexdigest()
+                    # Check if content has changed
+                    if content_hash == db.get_content_hash(rel_path):
+                        continue
 
-                # Check if content has changed
-                if content_hash == db.get_content_hash(obsidian_path):
-                    continue
+                    # Convert content
+                    new_content, new_frontmatter = convert_content(content, frontmatter)
 
-                # Convert content
-                new_content, new_frontmatter = convert_content(content, frontmatter)
+                    # Update database
+                    db.update_post(rel_path, frontmatter, content_hash)
 
-                # Update database
-                db.update_post(obsidian_path, frontmatter, content_hash)
+                    # Copy images referenced in the content
+                    for match in re.finditer(r'!\[\[(.*?)\]\]', content):
+                        img_path = match.group(1)
+                        if img_path.startswith('atomics/'):
+                            img_name = Path(img_path).name
+                            normalized_name = normalize_filename(img_name)
+                            src = vault_root / img_path
+                            dst = assets_dir / normalized_name
+                            if src.exists():
+                                shutil.copy2(src, dst)
+                                valid_assets.add(normalized_name)
+                                db.update_asset(str(src), str(dst))
 
-                # Copy images
-                for match in re.finditer(r'!\[\[(.*?)\]\]', content):
-                    img_path = match.group(1)
-                    if img_path.startswith('atomics/'):
-                        img_name = Path(img_path).name
-                        normalized_name = normalize_filename(img_name)
-                        src = vault_root / img_path
-                        dst = assets_dir / normalized_name
-                        if src.exists():
-                            shutil.copy2(src, dst)
-                            db.update_asset(str(src), str(dst))
-
-            except Exception as e:
-                print(f"Error processing {obsidian_path}: {e}")
-                if debug:
-                    traceback.print_exc()
+                except Exception as e:
+                    print(f"Error processing {file_path}: {e}")
+                    if debug:
+                        traceback.print_exc()
+            
+            # Handle image files
+            elif file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                try:
+                    # Copy image to assets directory
+                    normalized_name = normalize_filename(file)
+                    dst = assets_dir / normalized_name
+                    shutil.copy2(file_path, dst)
+                    valid_assets.add(normalized_name)
+                    print(f"Copied image: {normalized_name}")
+                except Exception as e:
+                    print(f"Error copying image {file}: {e}")
+                    if debug:
+                        traceback.print_exc()
 
     # Sync published posts
     print("Syncing published posts...")
@@ -590,8 +607,15 @@ def sync_files(dry_run: bool = False, debug: bool = False):
                 print(f"Error removing post {post_file}: {e}")
 
     # Clean up orphaned assets
-    print("Syncing assets...")
-    db.cleanup_assets()
+    print("Cleaning up orphaned assets...")
+    for asset_file in os.listdir(assets_dir):
+        if asset_file not in valid_assets:
+            asset_path = os.path.join(assets_dir, asset_file)
+            try:
+                os.remove(asset_path)
+                print(f"Removed orphaned asset: {asset_file}")
+            except Exception as e:
+                print(f"Error removing asset {asset_file}: {e}")
 
 def main():
     """Main entry point"""
