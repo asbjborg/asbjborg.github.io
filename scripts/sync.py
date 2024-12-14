@@ -497,8 +497,54 @@ def sync_files(dry_run: bool = False, debug: bool = False):
     valid_posts = set()
     valid_assets = set()
 
-    # Scan Obsidian files
-    print("Scanning Obsidian files...")
+    # Track images referenced in published posts
+    referenced_images = set()
+
+    # First pass: scan published posts to collect referenced images
+    print("Scanning published posts for image references...")
+    for root, _, files in os.walk(atomics_dir):
+        for file in files:
+            if not file.endswith('.md'):
+                continue
+
+            file_path = os.path.join(root, file)
+            rel_path = os.path.relpath(file_path, vault_root)
+
+            try:
+                # Read file content
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # Extract frontmatter
+                frontmatter = extract_frontmatter(content)
+                if frontmatter.get('status') != 'published':
+                    continue
+
+                # Check frontmatter for image references
+                if 'image' in frontmatter:
+                    img_path = str(frontmatter['image']).strip('"\' []')
+                    if img_path.startswith('/assets/img/posts/'):
+                        referenced_images.add(os.path.basename(img_path))
+
+                # Check content for image references
+                for match in re.finditer(r'!\[\[(.*?)\]\]', content):
+                    img_path = match.group(1)
+                    if img_path.startswith('atomics/'):
+                        referenced_images.add(normalize_filename(Path(img_path).name))
+
+                # Also check for standard markdown image syntax
+                for match in re.finditer(r'!\[.*?\]\((.*?)\)', content):
+                    img_path = match.group(1)
+                    if img_path.startswith('/assets/img/posts/'):
+                        referenced_images.add(os.path.basename(img_path))
+
+            except Exception as e:
+                print(f"Error scanning {file_path} for images: {e}")
+                if debug:
+                    traceback.print_exc()
+
+    # Second pass: process files and copy only referenced images
+    print("Processing files and copying referenced images...")
     for root, _, files in os.walk(atomics_dir):
         print(f"Looking for .md files and images in: {root}")
         for file in files:
@@ -533,19 +579,6 @@ def sync_files(dry_run: bool = False, debug: bool = False):
                     # Update database
                     db.update_post(rel_path, frontmatter, content_hash)
 
-                    # Copy images referenced in the content
-                    for match in re.finditer(r'!\[\[(.*?)\]\]', content):
-                        img_path = match.group(1)
-                        if img_path.startswith('atomics/'):
-                            img_name = Path(img_path).name
-                            normalized_name = normalize_filename(img_name)
-                            src = vault_root / img_path
-                            dst = assets_dir / normalized_name
-                            if src.exists():
-                                shutil.copy2(src, dst)
-                                valid_assets.add(normalized_name)
-                                db.update_asset(str(src), str(dst))
-
                 except Exception as e:
                     print(f"Error processing {file_path}: {e}")
                     if debug:
@@ -554,12 +587,13 @@ def sync_files(dry_run: bool = False, debug: bool = False):
             # Handle image files
             elif file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
                 try:
-                    # Copy image to assets directory
+                    # Only copy image if it's referenced in a published post
                     normalized_name = normalize_filename(file)
-                    dst = assets_dir / normalized_name
-                    shutil.copy2(file_path, dst)
-                    valid_assets.add(normalized_name)
-                    print(f"Copied image: {normalized_name}")
+                    if normalized_name in referenced_images:
+                        dst = assets_dir / normalized_name
+                        shutil.copy2(file_path, dst)
+                        valid_assets.add(normalized_name)
+                        print(f"Copied referenced image: {normalized_name}")
                 except Exception as e:
                     print(f"Error copying image {file}: {e}")
                     if debug:
@@ -570,7 +604,7 @@ def sync_files(dry_run: bool = False, debug: bool = False):
     for post in db.get_published_posts():
         try:
             # Read Obsidian file
-            obsidian_file = post['obsidian_path']
+            obsidian_file = os.path.join(vault_root, post['obsidian_path'])
             with open(obsidian_file, 'r', encoding='utf-8') as f:
                 content = f.read()
 
