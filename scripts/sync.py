@@ -520,41 +520,54 @@ def sync_files(dry_run: bool = False, debug: bool = False):
                 if frontmatter.get('status') != 'published':
                     continue
 
+                print(f"Scanning published post: {file_path}")
+
                 # Check frontmatter for image references
                 if 'image' in frontmatter:
                     img_path = str(frontmatter['image']).strip('"\' []')
                     if img_path.startswith('/assets/img/posts/'):
-                        referenced_images.add(os.path.basename(img_path))
+                        img_name = os.path.basename(img_path)
+                        print(f"Found frontmatter image: {img_name}")
+                        referenced_images.add(img_name)
+                    elif img_path.startswith('atomics/'):
+                        img_name = normalize_filename(Path(img_path).name)
+                        print(f"Found frontmatter image: {img_name}")
+                        referenced_images.add(img_name)
 
                 # Check content for image references
                 for match in re.finditer(r'!\[\[(.*?)\]\]', content):
                     img_path = match.group(1)
                     if img_path.startswith('atomics/'):
-                        referenced_images.add(normalize_filename(Path(img_path).name))
+                        img_name = normalize_filename(Path(img_path).name)
+                        print(f"Found inline image: {img_name}")
+                        referenced_images.add(img_name)
 
                 # Also check for standard markdown image syntax
                 for match in re.finditer(r'!\[.*?\]\((.*?)\)', content):
                     img_path = match.group(1)
                     if img_path.startswith('/assets/img/posts/'):
-                        referenced_images.add(os.path.basename(img_path))
+                        img_name = os.path.basename(img_path)
+                        print(f"Found markdown image: {img_name}")
+                        referenced_images.add(img_name)
 
             except Exception as e:
                 print(f"Error scanning {file_path} for images: {e}")
                 if debug:
                     traceback.print_exc()
 
+    print(f"\nFound {len(referenced_images)} referenced images:")
+    for img in sorted(referenced_images):
+        print(f"- {img}")
+
     # Second pass: process files and copy only referenced images
-    print("Processing files and copying referenced images...")
+    print("\nProcessing files and copying referenced images...")
     for root, _, files in os.walk(atomics_dir):
-        print(f"Looking for .md files and images in: {root}")
         for file in files:
             file_path = os.path.join(root, file)
             rel_path = os.path.relpath(file_path, vault_root)
             
             # Handle markdown files
             if file.endswith('.md'):
-                print(f"Found file: {rel_path}")
-
                 try:
                     # Read file content
                     with open(file_path, 'r', encoding='utf-8') as f:
@@ -563,7 +576,6 @@ def sync_files(dry_run: bool = False, debug: bool = False):
                     # Extract frontmatter
                     frontmatter = extract_frontmatter(content)
                     if not frontmatter.get('status'):
-                        print(f"Skipping {file} - no status")
                         continue
 
                     # Calculate content hash
