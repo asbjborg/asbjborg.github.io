@@ -603,9 +603,17 @@ def sync_files(dry_run: bool = False, debug: bool = False):
                     normalized_name = normalize_filename(file)
                     if normalized_name in referenced_images:
                         dst = assets_dir / normalized_name
-                        shutil.copy2(file_path, dst)
+                        # Check if image exists and is different
+                        should_copy = True
+                        if dst.exists():
+                            # Compare file contents using hash
+                            with open(file_path, 'rb') as f1, open(dst, 'rb') as f2:
+                                should_copy = hashlib.md5(f1.read()).hexdigest() != hashlib.md5(f2.read()).hexdigest()
+                        
+                        if should_copy:
+                            shutil.copy2(file_path, dst)
+                            print(f"Copied {'new' if not dst.exists() else 'updated'} image: {normalized_name}")
                         valid_assets.add(normalized_name)
-                        print(f"Copied referenced image: {normalized_name}")
                 except Exception as e:
                     print(f"Error copying image {file}: {e}")
                     if debug:
@@ -628,13 +636,22 @@ def sync_files(dry_run: bool = False, debug: bool = False):
             jekyll_file = os.path.join(posts_dir, post['jekyll_path'])
             valid_posts.add(post['jekyll_path'])
             if not dry_run:
-                os.makedirs(os.path.dirname(jekyll_file), exist_ok=True)
-                with open(jekyll_file, 'w', encoding='utf-8') as f:
-                    f.write('---\n')
-                    f.write(yaml.dump(new_frontmatter, allow_unicode=True))
-                    f.write('---\n')
-                    f.write(new_content)
-                print(f"[SYNC_CHANGE] Post created: {post['jekyll_path']}")
+                # Check if file exists and content is different
+                content_changed = True
+                if os.path.exists(jekyll_file):
+                    with open(jekyll_file, 'r', encoding='utf-8') as f:
+                        old_content = f.read()
+                        new_content_full = f'---\n{yaml.dump(new_frontmatter, allow_unicode=True)}---\n{new_content}'
+                        content_changed = old_content != new_content_full
+
+                if content_changed:
+                    os.makedirs(os.path.dirname(jekyll_file), exist_ok=True)
+                    with open(jekyll_file, 'w', encoding='utf-8') as f:
+                        f.write('---\n')
+                        f.write(yaml.dump(new_frontmatter, allow_unicode=True))
+                        f.write('---\n')
+                        f.write(new_content)
+                    print(f"[SYNC_CHANGE] Post {'created' if not os.path.exists(jekyll_file) else 'updated'}: {post['jekyll_path']}")
 
         except Exception as e:
             print(f"Error syncing post {post['obsidian_path']}: {e}")

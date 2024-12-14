@@ -42,12 +42,33 @@ echo $$ > "$STATE_FILE"
 
 # Generate log filename
 LOG_FILE="$LOG_DIR/sync_$(date +%Y%m%d_%H%M%S).log"
-echo "Starting sync, logging to: $LOG_FILE"
+
+# Function to write status to cronlog
+write_status() {
+    local status_type=$1
+    local status_msg=$2
+    echo "| $(date '+%Y-%m-%d %H:%M:%S') | $status_type | [Details]($(basename $LOG_FILE)) | $status_msg |" >> "$LOG_DIR/cronlog.md"
+    # Keep only last 100 lines
+    if [ -f "$LOG_DIR/cronlog.md" ]; then
+        tail -n 100 "$LOG_DIR/cronlog.md" > "$LOG_DIR/cronlog.md.tmp"
+        mv "$LOG_DIR/cronlog.md.tmp" "$LOG_DIR/cronlog.md"
+    fi
+}
+
+# Create cronlog if it doesn't exist
+if [ ! -f "$LOG_DIR/cronlog.md" ]; then
+    echo "# Sync Status Log" > "$LOG_DIR/cronlog.md"
+    echo "| Timestamp | Status | Log | Message |" >> "$LOG_DIR/cronlog.md"
+    echo "|-----------|--------|-----|---------|" >> "$LOG_DIR/cronlog.md"
+fi
 
 # Run sync with error handling
 {
-    cd "$SITE_ROOT" || exit 1
-    source .env || exit 1
+    cd "$SITE_ROOT" || { write_status "ERROR" "Failed to change directory"; exit 1; }
+    source .env || { write_status "ERROR" "Failed to load environment"; exit 1; }
+    
+    # Activate virtual environment
+    source .venv/bin/activate || { write_status "ERROR" "Failed to activate virtual environment"; exit 1; }
     
     # Run Python with modified environment
     if ! PYTHONPATH="$SITE_ROOT/scripts" \
@@ -58,15 +79,26 @@ echo "Starting sync, logging to: $LOG_FILE"
          PYTHONHASHSEED=random \
          OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES \
          python -X utf8 -X dev scripts/sync.py 2>&1; then
-        echo "Python script failed"
+        write_status "ERROR" "Python script failed"
         exit 1
     fi
+    
+    # Deactivate virtual environment
+    deactivate
 } 2>&1 | tee -a "$LOG_FILE"
 
 SYNC_EXIT=${PIPESTATUS[0]}
-if [ $SYNC_EXIT -ne 0 ]; then
-    echo "Sync failed with exit code $SYNC_EXIT"
+if [ "$SYNC_EXIT" -ne 0 ]; then
+    write_status "ERROR" "Sync failed with exit code $SYNC_EXIT"
     exit $SYNC_EXIT
+else
+    # Check if there were any changes
+    if grep -q "\[SYNC_CHANGE\]" "$LOG_FILE"; then
+        CHANGES=$(grep "\[SYNC_CHANGE\]" "$LOG_FILE" | wc -l | tr -d ' ')
+        write_status "SUCCESS" "$CHANGES changes applied"
+    else
+        write_status "SUCCESS" "No changes needed"
+    fi
 fi
 
 # Check if we're on main branch
