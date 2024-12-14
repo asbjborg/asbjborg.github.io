@@ -23,6 +23,8 @@ def load_env():
     print(f"Loading environment:")
     print(f"SYNC_VAULT_ROOT: {vault_root}")
     print(f"SYNC_JEKYLL_ROOT: {jekyll_root}")
+    print(f"Current working directory: {os.getcwd()}")
+    print(f".env file exists: {os.path.exists('.env')}")
     
     if not vault_root or not jekyll_root:
         raise ValueError("SYNC_VAULT_ROOT and SYNC_JEKYLL_ROOT must be set in .env")
@@ -455,8 +457,23 @@ def create_jekyll_frontmatter(post_data: tuple, db: SyncDB) -> Dict:
 
 def sync_files(dry_run: bool = False, debug: bool = False):
     """Sync files between Obsidian and Jekyll"""
-    vault_root = Path(os.getenv('SYNC_VAULT_ROOT'))
-    jekyll_root = Path(os.getenv('SYNC_JEKYLL_ROOT'))
+    # Load environment variables first
+    load_dotenv()
+    
+    vault_root = os.getenv('SYNC_VAULT_ROOT')
+    jekyll_root = os.getenv('SYNC_JEKYLL_ROOT')
+    
+    print(f"Loading environment:")
+    print(f"SYNC_VAULT_ROOT: {vault_root}")
+    print(f"SYNC_JEKYLL_ROOT: {jekyll_root}")
+    print(f"Current working directory: {os.getcwd()}")
+    print(f".env file exists: {os.path.exists('.env')}")
+    
+    if not vault_root or not jekyll_root:
+        raise ValueError("SYNC_VAULT_ROOT and SYNC_JEKYLL_ROOT must be set in .env")
+    
+    vault_root = Path(vault_root)
+    jekyll_root = Path(jekyll_root)
     atomics_dir = vault_root / 'atomics'
     posts_dir = jekyll_root / '_posts'
     assets_dir = jekyll_root / 'assets' / 'img' / 'posts'
