@@ -43,29 +43,6 @@ ENV/
 .LSOverride
 Thumbs.db
 
-# Generated files
-.env
-scripts/sync_wrapper.sh
-.venv/
-LOGS/
-
-# Runtime Files
-.watch.pid
-.last_sync
-.pending_changes
-sync.db
-*.db
-*.db-journal
-sync_posts.json
-sync_assets.json
-
-# Logs
-LOGS/
-*.log
-
-# Environment
-.env
-
 # Cursor workarounds
 commit_message.txt
 

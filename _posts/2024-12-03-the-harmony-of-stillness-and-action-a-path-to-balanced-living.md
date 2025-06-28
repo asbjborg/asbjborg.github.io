@@ -1,17 +1,10 @@
 ---
+title: "The Harmony of Stillness and Action: A Path to Balanced Living"
+date: 2024-12-03 12:00:00 +0100
+last_modified_at: 2024-12-14 18:44:19 +0100
+categories: [Philosophy, Personal Growth]
+tags: [mindfulness, balance, personal-growth, philosophy, taoism, productivity, reflection, development, ai]
 image: /assets/img/posts/pasted-image-20241203214844.png
-status: published
-tags:
-- mindfulness
-- balance
-- personal-growth
-- philosophy
-- taoism
-- productivity
-- reflection
-- development
-- ai
-title: 'The Harmony of Stillness and Action: A Path to Balanced Living'
 ---
 ## The Interplay of Stillness and Action
 

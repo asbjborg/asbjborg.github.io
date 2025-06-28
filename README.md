@@ -1,50 +1,51 @@
-# Obsidian to Jekyll Sync
+# Personal Blog
 
-A tool to sync Obsidian notes to a Jekyll blog.
-
-## Features
-
-- Syncs Markdown files from Obsidian to Jekyll
-- Handles image attachments
-- Preserves frontmatter
-- Runs automatically every 5 minutes via cron
+A personal blog built with Jekyll and the Chirpy theme, hosted on GitHub Pages.
 
 ## Setup
 
-1. Clone this repository
-2. Run setup script:
-
+1. Clone the repository:
    ```bash
-   ./scripts/setup.sh
+   git clone https://github.com/your-username/your-blog.git
+   cd your-blog
    ```
 
-3. Configure `.env` with your paths
-4. The sync will run automatically every 5 minutes
+2. Install dependencies:
+   ```bash
+   bundle install
+   ```
 
-## Manual Sync
+3. Run locally:
+   ```bash
+   bundle exec jekyll serve
+   ```
 
-If you need to run a sync manually:
+4. Visit `http://localhost:4000` to see your blog
 
-```bash
-./scripts/sync_wrapper.sh
+## Writing Posts
+
+Create new posts in the `_posts` directory with the filename format:
+```
+YYYY-MM-DD-title-of-post.md
 ```
 
-## Logs
+Add frontmatter to your posts:
+```yaml
+---
+title: "Your Post Title"
+date: YYYY-MM-DD HH:MM:SS +/-TTTT
+categories: [category1, category2]
+tags: [tag1, tag2]
+---
+```
 
-Logs are stored in the `LOGS` directory:
+## Deployment
 
-- `sync_YYYYMMDD_HHMMSS.log` - Individual sync logs
-- `watch.log` - General sync log
-- `watch.error.log` - Error log
+The blog automatically deploys to GitHub Pages when you push to the `main` branch.
 
-## Configuration
+## Customization
 
-Edit `.env` to configure:
-
-- Paths to Obsidian vault and Jekyll site
-- Debug and logging options
-- Sync interval
-
-## License
-
-MIT
+- Edit `_config.yml` for site settings
+- Modify `_data/` files for site data
+- Customize styling in `_sass/` and `assets/css/`
+- Update author information in `_data/authors.yml`
