@@ -5,17 +5,20 @@ A personal blog built with Jekyll and the Chirpy theme, hosted on GitHub Pages.
 ## Setup
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/your-username/your-blog.git
    cd your-blog
    ```
 
 2. Install dependencies:
+
    ```bash
    bundle install
    ```
 
 3. Run locally:
+
    ```bash
    bundle exec jekyll serve
    ```
@@ -25,11 +28,13 @@ A personal blog built with Jekyll and the Chirpy theme, hosted on GitHub Pages.
 ## Writing Posts
 
 Create new posts in the `_posts` directory with the filename format:
+
 ```
 YYYY-MM-DD-title-of-post.md
 ```
 
 Add frontmatter to your posts:
+
 ```yaml
 ---
 title: "Your Post Title"

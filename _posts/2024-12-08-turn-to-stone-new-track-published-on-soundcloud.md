@@ -2,7 +2,6 @@
 title: "Turn to Stone: Medusa's Myth and the Digital Gaze Explored in Music"
 date: 2024-12-08 12:00:00 +0100
 last_modified_at: 2024-12-14 18:44:19 +0100
-categories: [Music, Philosophy]
 tags: [music, music-production, digital-mythology, modern-medusa, ai-music, viral-culture]
 image: /assets/img/posts/pasted-image-20241209143240.png
 ---

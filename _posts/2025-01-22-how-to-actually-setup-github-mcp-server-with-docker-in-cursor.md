@@ -1,9 +1,7 @@
 ---
 title: "How to Actually Setup GitHub MCP Server with Docker in Cursor (The Working Guide)"
 date: 2025-01-22 12:00:00 +0100
-categories: [Development, Tutorials]
 tags: [cursor, github, mcp, docker, ai, development, troubleshooting]
-image: /assets/img/posts/github-mcp-cursor-guide.png
 ---
 
 *Because the official documentation doesn't work, and you're probably pulling your hair out right now*
@@ -54,6 +52,7 @@ Following the official docs, you likely created something like this in your `~/.
 ```
 
 **This doesn't work because:**
+
 - ❌ You're mixing Docker `-e` flags with MCP `env` section
 - ❌ Shell substitution `${GITHUB_TOKEN}` doesn't resolve in JSON
 - ❌ Docker receives the literal string `"${GITHUB_TOKEN}"` as your token
@@ -104,7 +103,7 @@ Create or edit `~/.cursor/mcp.json` with this **working** configuration:
 }
 ```
 
-### What Makes This Work:
+### What Makes This Work
 
 ✅ **No MCP `env` section** - eliminates JSON variable substitution issues  
 ✅ **Pure Docker syntax** - uses `-e VARNAME` to pass environment variables from host  
@@ -125,7 +124,7 @@ Both should show the same token prefix (e.g., `github_pat_1...`).
 ### Step 4: Restart and Test
 
 1. **Restart Cursor** completely (not just reload)
-2. **Check MCP Settings**: Go to Cursor Settings → MCP 
+2. **Check MCP Settings**: Go to Cursor Settings → MCP
 3. **Verify the server is listed** and shows as available
 
 ## Why This Works (Technical Explanation)
@@ -142,6 +141,7 @@ The magic is in how Docker handles environment variables:
 Once everything is configured, test that it's working:
 
 **In Cursor's chat/composer**, try asking something like:
+
 - *"List the open issues in this repository"*
 - *"Show me the README file"*
 - *"Create a new issue for [something]"*
@@ -162,6 +162,7 @@ Here's what successful usage looks like:
 ### Still getting "authorization denied"?
 
 **Step 1**: Double-check your environment variables
+
 ```bash
 # This should show your token (first 20 chars)
 echo $GITHUB_PERSONAL_ACCESS_TOKEN | cut -c1-20
@@ -169,12 +170,14 @@ echo $GITHUB_PERSONAL_ACCESS_TOKEN | cut -c1-20
 
 **Step 2**: Verify token permissions  
 Your GitHub token needs these scopes:
+
 - ✅ `repo` (for repository access)
 - ✅ `issues` (for issue management)  
 - ✅ `pull_requests` (for PR management)
 
 **Step 3**: Fresh restart  
 Environment variable changes need a clean slate:
+
 1. Close Cursor completely
 2. Open a new terminal session  
 3. Start Cursor from the new terminal
@@ -203,4 +206,4 @@ Environment variable changes need a clean slate:
 }
 ```
 
-**⚠️ Security Warning**: This puts your token in plaintext. Only use for testing or in secure environments. 
+**⚠️ Security Warning**: This puts your token in plaintext. Only use for testing or in secure environments.
