@@ -1,10 +1,10 @@
 ---
 title: "How to Actually Setup GitHub MCP Server with Docker in Cursor (The Working Guide)"
-date: 2025-01-22 12:00:00 +0100
+date: 2025-06-28 11:45:28 +0200
 tags: [cursor, github, mcp, docker, ai, development, troubleshooting]
 ---
 
-*Because the official documentation doesn't work, and you're probably pulling your hair out right now*
+Because the official documentation doesn't work, and you're probably pulling your hair out right now
 
 > **🤖 AI Disclosure**: This guide was written by Claude (Anthropic's AI assistant) based on real troubleshooting experience. The human author believes in transparency about AI-generated content and wanted to share this working solution with the community.
 
