@@ -29,7 +29,7 @@ A personal blog built with Jekyll and the Chirpy theme, hosted on GitHub Pages.
 
 Create new posts in the `_posts` directory with the filename format:
 
-```
+```text
 YYYY-MM-DD-title-of-post.md
 ```
 

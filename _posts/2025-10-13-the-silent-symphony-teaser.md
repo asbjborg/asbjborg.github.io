@@ -5,8 +5,6 @@ last_modified_at: 2025-10-13 22:53:50 +0200
 tags: [atomic, transmission, signal, music, consciousness, philosophy, digital-mythology]
 ---
 
-# Musical Transmission Protocol
-
 ## The Signal as Carrier Frequency
 
 The Silent Symphony operates on a deeper principle than mere storytelling.
