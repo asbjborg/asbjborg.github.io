@@ -1,91 +1,32 @@
-name: Feature
-description: Template for new features
-title: "[Feature] "
+name: Site change
+description: Blog post, theme tweak, or other site update
+title: "[Site] "
 labels: ["enhancement"]
 assignees:
   - asbjborg
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for taking the time to create a feature issue!
-        
   - type: input
-    id: feature-name
+    id: summary
     attributes:
-      label: Feature Name
-      description: A clear and concise name for the feature
-      placeholder: "e.g., Sync Engine v2"
+      label: Summary
+      description: What are you changing?
+      placeholder: "e.g., New post about Night Shift"
     validations:
       required: true
-      
+
   - type: textarea
     id: description
     attributes:
       label: Description
-      description: Brief description of the feature
-      placeholder: "Describe what this feature will do..."
+      description: Context, links, or notes
     validations:
       required: true
-      
+
   - type: textarea
-    id: tasks
+    id: checklist
     attributes:
-      label: Tasks
-      description: List of tasks to implement this feature
+      label: Checklist
       value: |
-        1. Core Development
-           - [ ] Task 1
-           - [ ] Task 2
-        
-        2. Documentation
-           - [ ] Update technical docs
-           - [ ] Write blog post
-           - [ ] Add user guide
-    validations:
-      required: true
-      
-  - type: textarea
-    id: success-criteria
-    attributes:
-      label: Success Criteria
-      description: What defines this feature as complete?
-      placeholder: |
-        - Criterion 1
-        - Criterion 2
-    validations:
-      required: true
-      
-  - type: textarea
-    id: testing-scope
-    attributes:
-      label: Testing Scope
-      description: What needs to be tested?
-      value: |
-        1. Unit Tests
-           - Test area 1
-           - Test area 2
-        
-        2. Integration Tests
-           - Test scenario 1
-           - Test scenario 2
-    validations:
-      required: true
-      
-  - type: input
-    id: branch
-    attributes:
-      label: Branch Name
-      description: The git branch for this feature
-      placeholder: "feature/name-v2"
-    validations:
-      required: true
-      
-  - type: input
-    id: blog-post
-    attributes:
-      label: Blog Post
-      description: The draft blog post for this feature
-      placeholder: "_drafts/feature-name.md"
-    validations:
-      required: true 
+        - [ ] Content ready (`_posts/` and assets if any)
+        - [ ] Local preview (`bundle exec jekyll serve`)
+        - [ ] Pushed to `main` (or PR merged)

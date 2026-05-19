@@ -1,56 +1,42 @@
 # Personal Blog
 
-A personal blog built with Jekyll and the Chirpy theme, hosted on GitHub Pages.
+Jekyll site using the [Chirpy](https://github.com/cotes2020/jekyll-theme-chirpy) theme, deployed to GitHub Pages.
 
 ## Setup
 
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/your-username/your-blog.git
-   cd your-blog
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   bundle install
-   ```
-
-3. Run locally:
-
-   ```bash
-   bundle exec jekyll serve
-   ```
-
-4. Visit `http://localhost:4000` to see your blog
-
-## Writing Posts
-
-Create new posts in the `_posts` directory with the filename format:
-
-```text
-YYYY-MM-DD-title-of-post.md
+```bash
+git clone https://github.com/asbjborg/asbjborg.github.io.git
+cd asbjborg.github.io
+bundle install
+bundle exec jekyll serve
 ```
 
-Add frontmatter to your posts:
+Open http://localhost:4000
 
-```yaml
----
-title: "Your Post Title"
-date: YYYY-MM-DD HH:MM:SS +/-TTTT
-categories: [category1, category2]
-tags: [tag1, tag2]
----
-```
+## Writing & Publishing Posts
 
-## Deployment
+1. Add a file under `_posts/` named `YYYY-MM-DD-slug.md`
+2. Use this frontmatter (tags only — no categories):
 
-The blog automatically deploys to GitHub Pages when you push to the `main` branch.
+   ```yaml
+   ---
+   title: "Your Post Title"
+   date: 2026-05-19 10:20:00 +0200
+   last_modified_at: 2026-05-19 10:20:00 +0200
+   tags: [short-stories]
+   image: /assets/img/posts/your-banner.png
+   ---
+   ```
+
+   `image` is optional. Banner images live in `assets/img/posts/`.
+
+3. Commit the markdown and any new assets
+4. Push to `main` — the [pages-deploy workflow](.github/workflows/pages-deploy.yml) builds and publishes automatically
+
+Pull requests to `main` run [CI](.github/workflows/ci.yml): Jekyll build, link check, and markdownlint.
 
 ## Customization
 
-- Edit `_config.yml` for site settings
-- Modify `_data/` files for site data
-- Customize styling in `_sass/` and `assets/css/`
-- Update author information in `_data/authors.yml`
+- Site settings: `_config.yml`
+- Author info: `_data/authors.yml`
+- Tabs/pages: `_tabs/`

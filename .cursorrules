@@ -24,9 +24,6 @@
 - Keep code adjustments brief - show only relevant lines
 - Respect existing prettier/lint preferences
 - Check if files exist before creating new ones
-- Add debug logging when code doesn't work as expected
-  - Debug mode is controlled by SYNC_DEBUG in .env
-  - Use print statements liberally when SYNC_DEBUG=true
 - Read git commits to understand code history
 
 ### Multi-line Content
@@ -49,164 +46,53 @@
 
   4. Verify the file content before using
 
-- Common uses:
-  - Commit messages
-  - Issue bodies
-  - Issue comments
-  - PR descriptions
-  - Long documentation
+- Common uses: commit messages, issue bodies, PR descriptions
 
 ### Environment
 
 - Assume MacOS environment
 - Never assume fresh environment
 - Check existing state before changes
-- Use pd.concat instead of pd.append in pandas
-- Always check .env values before making changes
-- Respect file paths from .env, never hardcode paths
 
-## Feature Development
+## Blog (Jekyll + Chirpy on GitHub Pages)
 
-### Feature Tracking
+### Publishing a Post
 
-1. Feature Status
-   - Track features in `docs/strategy/implementation/checklist.json`
-   - Keep checklist.json updated with actual values
-      - keep the checklist updated, so read it and check the status of the tasks frequently!
+1. Create `_posts/YYYY-MM-DD-slug.md` (filename date = post date)
+2. Add frontmatter:
 
-### Prerequisites
+   ```yaml
+   ---
+   title: "Post Title"
+   date: YYYY-MM-DD HH:MM:SS +0200
+   last_modified_at: YYYY-MM-DD HH:MM:SS +0200
+   tags: [tag-one, tag-two]
+   image: /assets/img/posts/banner.png  # optional
+   ---
+   ```
 
-1. Feature Creation
-   - Create GitHub issue for the feature
-   - Note the issue number (e.g., #6)
-   - Add appropriate labels and milestone
-   - create checklist.json based on requirements in the issue
+3. Put images in `assets/img/posts/` (use absolute paths in frontmatter `image:`)
+4. Preview locally: `bundle install` then `bundle exec jekyll serve` → http://localhost:4000
+5. Commit post + assets, push to `main` → GitHub Actions builds and deploys to GitHub Pages
 
-2. Branch Setup
-   - Create feature branch: `feature/name-v2`
-   - Create draft blog post in _drafts/
+### Writing Voice
 
-### Order of Operations
-
-1. Code Development
-   - Write/update code in appropriate module
-   - Follow modular structure, make it as atomic as possible
-   - Add comments and docstrings or inline comments
-   - add lots of debugging and print statements and check the output
-      - can be toggled with parameter when running the script
-
-2. Blog Post Update
-   - Update draft post with new features
-   - Add code examples if relevant
-   - Keep tone casual but informative
-   - Add technical details after the friendly intro
-   - be witty and add dad jokes
-   - write in first person as a 35 year old man living in Denmark who works in tech
-
-3. Feature Tracking
-   - Update checklist.json with progress
-   - Mark features as complete when done
-   - Add new features if discovered
-
-4. Code Commits
-   - Commit code changes often to track history
-   - Commit blog post updates
-   - Use descriptive commit messages
-      - you cannot write multi-line commit messages in the terminal (it's a limitation of your tool in cursor), instead use the `commit_message.txt` file to write a multi-line commit message and then use that text file as the commit message
-   - Push to feature branch when the user has reviewed the changes and approved the push
-
-### Templates
-
-#### feature.md Template
-
-```markdown
-# Feature Name
-
-Brief description of the feature.
-
-## Tasks
-1. Core Development
-   - [ ] Task 1
-   - [ ] Task 2
-
-2. Documentation
-   - [ ] Update technical docs
-   - [ ] Write blog post
-   - [ ] Add user guide
-
-## Success Criteria
-- Criterion 1
-- Criterion 2
-
-## Testing Scope
-1. Unit Tests
-   - Test area 1
-   - Test area 2
-
-Related branch: feature/name-v2
-```
+- Casual but informative; technical details after a friendly intro
+- Witty, dad jokes welcome
+- First person, 35-year-old in Denmark who works in tech
 
 ### Commit Message Style
 
-- feat: New features
+- feat: New features (e.g. new post)
 - fix: Bug fixes
 - docs: Documentation updates
 - refactor: Code restructuring
-- test: Adding tests
 - chore: Maintenance tasks
-
-### Branch Strategy
-
-- Create feature-specific branch
-- Commit atomic changes
-- Keep blog post updated with progress
-- Update checklist.yaml after significant changes
-- PR when feature is complete
 
 ### Important Lessons
 
-1. Code Modification
-   - Make small, targeted changes instead of broad sweeps
-   - Always read and understand existing code before modifying
-   - Test each change individually and often
-   - Document why changes are needed in the commit message
-   - avoid large loops when doing agentic tasks, you have a habit of getting stuck in an infinite loop where you modify the code too broadly, adding errors and flip-flopping on the changes. if you find yourself implmenting something twice its a clear sign that you are going in circles. break out of your conundrum by taking a step back and re-evaluating your approach.
-
-2. Refactoring Strategy
-   - Break large files into logical modules
-   - Keep functions focused and atomic
-   - Add clear interface documentation
-   - Maintain proper references between modules
-   - Add comments explaining module relationships and purpose
-
-3. Testing Approach
-   - test often!
-   - add lots of debugging and print statements and check the output
-      - controlled by SYNC_DEBUG in .env
-      - use print statements liberally when debugging is enabled
-
-4. always use the KISS principle
-   - do not over-engineer the solution
-   - focus on the simplest solution that works
-   - if you find yourself writing a lot of code to solve a problem, you are probably over-engineering the solution. take a step back and re-evaluate your approach.
-   - the solution should be simple and easy to understand, not complex and convoluted
-   - the solution is for an individual user, not a large organization with lots of processes and procedures
-
-5. when updating code, please make sure not to include too much content in your find/replace operation. you have a habit of replacing big chunks of code, when you only need to rename a parameter for example.
-
-### Sync Rules
-
-- Obsidian is always the source of truth for frontmatter
-- Files without status property are treated as private
-- Never modify Obsidian frontmatter from Jekyll changes
-- Handle image paths differently in frontmatter (quoted) vs content (unquoted)
-- Maintain frontmatter property order when syncing
-- Filter out system tags (e.g., 'atomic') during sync
-
-### Error Handling
-
-- Print detailed error messages when SYNC_DEBUG=true
-- Always verify file existence before operations
-- Handle missing directories gracefully
-- Check file permissions before operations
-- Validate frontmatter before syncing
+1. Make small, targeted changes instead of broad sweeps
+2. Test each change individually (`bundle exec jekyll b` or `jekyll serve`)
+3. KISS — this is a personal blog, not an enterprise pipeline
+4. Do not replace large code blocks when a one-line rename would do
+5. Avoid agentic flip-flopping; if you implement the same thing twice, stop and re-read the file
