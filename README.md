@@ -11,7 +11,7 @@ bundle install
 bundle exec jekyll serve
 ```
 
-Open http://localhost:4000
+Open [http://localhost:4000](http://localhost:4000)
 
 ## Writing & Publishing Posts
 
