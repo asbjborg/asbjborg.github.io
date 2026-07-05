@@ -1,7 +1,7 @@
 ---
 title: "Building ASMOS: My Personal AI Operating System"
 date: 2026-07-05 18:00:00 +0200
-last_modified_at: 2026-07-05 22:35:00 +0200
+last_modified_at: 2026-07-05 20:45:00 +0200
 tags: [asmos, ai, pkm, cursor, agents, open-source]
 ---
 
@@ -85,6 +85,6 @@ ASMOS is a weekend's worth of architecture and a week's worth of migration — n
 
 But the loop works: capture, ingest, remember, code — all in one tree. Codex, Cursor, and ChatGPT can all read the same `USER.md` and `AGENTS.md` and actually know who they're talking to.
 
-If you're building something similar, the repo is public: [github.com/asbjborg/asmos](https://github.com/asbjborg/asmos).
+If you're building something similar, the portable part is the architecture above — ASMOS itself stays a **private** personal repo for now, not an open-source release.
 
 More posts as the migration continues. For now — this one is proof the nested-repo setup survives a real push. 🚀
