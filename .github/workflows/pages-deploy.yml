@@ -76,20 +76,46 @@ jobs:
     needs: build
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deploy1.outputs.page_url }}
     permissions:
       pages: write
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - name: Deploy to GitHub Pages (attempt 1)
+        id: deploy1
+        continue-on-error: true
         uses: actions/deploy-pages@v4
 
-      - name: Wait before Pages deploy retry
-        if: failure() && steps.deployment.outcome == 'failure'
-        run: sleep 45
+      - name: Wait before retry 2
+        if: steps.deploy1.outcome == 'failure'
+        run: sleep 90
 
-      - name: Retry Pages deploy on transient failure
-        if: failure() && steps.deployment.outcome == 'failure'
+      - name: Deploy to GitHub Pages (attempt 2)
+        id: deploy2
+        if: steps.deploy1.outcome == 'failure'
+        continue-on-error: true
         uses: actions/deploy-pages@v4
+
+      - name: Wait before retry 3
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        run: sleep 120
+
+      - name: Deploy to GitHub Pages (attempt 3)
+        id: deploy3
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Report deploy result
+        env:
+          D1: ${{ steps.deploy1.outcome }}
+          D2: ${{ steps.deploy2.outcome }}
+          D3: ${{ steps.deploy3.outcome }}
+        run: |
+          if [ "$D1" = "success" ] || [ "$D2" = "success" ] || [ "$D3" = "success" ]; then
+            echo "Pages deploy succeeded"
+            exit 0
+          fi
+          echo "Pages deploy failed after 3 attempts"
+          exit 1
