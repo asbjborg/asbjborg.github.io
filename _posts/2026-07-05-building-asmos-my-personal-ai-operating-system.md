@@ -1,7 +1,7 @@
 ---
 title: "Building ASMOS: My Personal AI Operating System"
 date: 2026-07-05 18:00:00 +0200
-last_modified_at: 2026-07-05 18:00:00 +0200
+last_modified_at: 2026-07-05 22:35:00 +0200
 tags: [asmos, ai, pkm, cursor, agents, open-source]
 ---
 
